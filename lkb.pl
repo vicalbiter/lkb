@@ -143,8 +143,8 @@ delete_class(C, OldKB, NewKB) :-
 	delete_all_relations_with(C, OldKB, X),
 	get_mother_class(C, OldKB, M),
 	copy_objects_to_another_class(C, M, X, Y),
-%	change_children_mother_class(C, Y, Z),
-	delete_element(class(C,_,_,_,_), Y, NewKB).
+	change_children_mother_class(C, M, Y, Z),
+	delete_element(class(C,_,_,_,_), Z, NewKB).
 
 % get_mother_class(C, KB, M)
 % Gets the mother class from the class C in KB, and binds it to M
@@ -213,6 +213,18 @@ delete_relations_with(Id, OldR, NewR) :-
 
 %------------------------------------
 
+%get_properties_from_class
+get_properties_from_class(_, [], []).
+get_properties_from_class(C, [class(C,_,P,_,_)|_], P).
+get_properties_from_class(C, [_|T], P) :-
+	get_properties_from_class(C, T, P).
+
+%get_properties_from_object
+get_properties_from_object(_, [], []).
+get_properties_from_object(O, [[id=>O,P,_]|_], P).
+get_properties_from_object(O, [_|T], P) :-
+	get_properties_from_object(O, T, P).
+
 %get_relations_from_class
 get_relations_from_class(_, [], []).
 get_relations_from_class(C, [class(C,_,_,R,_)|_], R).
@@ -225,9 +237,38 @@ get_relations_from_object(O, [[id=>O,_,R]|_], R).
 get_relations_from_object(O, [_|T], R) :-
 	get_relations_from_object(O, T, R).
 
+%------------------------------
 
+%delete_property_of_class(P, C, OldKB, NewKB)
+% Deletes a specific property of a class
+delete_property_of_class(Property, C, OldKB, NewKB) :-
+	get_properties_from_class(C, OldKB, OldP),
+	delete_element([Property,_], OldP, NewP),
+	modify_element(class(C, M, _, R, O), class(C, M, NewP, R, O), OldKB, NewKB).
 
+%delete_relation_of_class(R, C, OldKB, NewKB)
+% Deletes a specific relation of a class
+delete_relation_of_class(Relation, C, OldKB, NewKB) :-
+	get_relations_from_class(C, OldKB, OldR),
+	delete_element([Relation,_], OldR, NewR),
+	modify_element(class(C, M, P, _, O), class(C, M, P, NewR, O), OldKB, NewKB).
 
+%delete_property_of_object(P, O, OldKB, NewKB)
+% Deletes a specific property of an object
+delete_property_of_object(Property, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),		
+	modify_element(class(C, M, P, R, OldO), class(C, M, P, R, NewO), OldKB, NewKB),
+	get_properties_from_object(O, OldO, OldP),
+	delete_element([Property,_], OldP, NewP),
+	modify_element([id=>O,OldP,OR], [id=>O,NewP,OR], OldO, NewO).
+
+%delete_relation_of_object(R, C, OldKB, NewKB)
+delete_relation_of_object(Relation, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),
+	modify_element(class(C, M, P, R, OldO), class(C, M, P, R, NewO), OldKB, NewKB),
+	get_relations_from_object(O, OldO, OldR),
+	delete_element([Relation,_], OldR, NewR),
+	modify_element([id=>O,OP,OldR], [id=>O,OP,NewR], OldO, NewO).
 
 %------------------------------
 % Extension
