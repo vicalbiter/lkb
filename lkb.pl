@@ -208,12 +208,20 @@ change_class_mother_class(C, X, OldKB, NewKB) :-
 
 %delete_object
 delete_object(ObjectId, OldKB, NewKB) :-
-	delete_all_relations_with(ObjectId, OldKB, X),
-	get_class_of(ObjectId, X, C),
+	get_class_of(ObjectId, OldKB, C),
+	get_object_list(C, OldKB, OL),
+	is_member_of_object_list(ObjectId, OL, IdList),
+	delete_all_relations_with_list(IdList, OldKB, X),
 	substitute_element(class(C, Mother, Props, Rels, OldInst), class(C, Mother, Props, Rels, NewInst), X, NewKB),
-	delete_element([id=>ObjectId,_,_],OldInst,NewInst).
+	delete_element([IdList,_,_],OldInst,NewInst).
 
-%deletes_relations_with
+%delete_all_relations_with_list
+delete_all_relations_with_list([], L, L).
+delete_all_relations_with_list([Id|T], OldKB, NewKB) :-
+	delete_all_relations_with(Id, OldKB, X),
+	delete_all_relations_with_list(T, X, NewKB).
+
+%delete_all_relations_with
 delete_all_relations_with(_,[],[]).
 delete_all_relations_with(Id, [class(C,M,P,OldR,OldI)|T], [class(C,M,P,NewR,NewI)|L]) :-
 	delete_relations_with(Id, OldR, NewR),	
@@ -221,13 +229,13 @@ delete_all_relations_with(Id, [class(C,M,P,OldR,OldI)|T], [class(C,M,P,NewR,NewI
 	delete_all_relations_with(Id, T, L).
 
 % deletes_list_relation_with
-% Deletes relation with object on a class
+% Deletes relation with a certain Id (class or object) on a class
 delete_class_relations_with(_, [], []).
-delete_class_relations_with(Id, [[id=>O,P,OldR]|T], [[id=>O,P,NewR]|L]) :-
+delete_class_relations_with(Id, [[Ids,P,OldR]|T], [[Ids,P,NewR]|L]) :-
 	delete_relations_with(Id, OldR, NewR),
 	delete_class_relations_with(Id, T, L).
 
-% Deletes object from relations list
+% Deletes id from relations list
 delete_relations_with(Id, OldR, NewR) :-
 	delete_element([_=>Id,_], OldR, X),
 	delete_element([not(_=>Id),_], X, NewR).
