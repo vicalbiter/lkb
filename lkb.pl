@@ -250,7 +250,8 @@ get_properties_from_class(C, [_|T], P) :-
 
 %get_properties_from_object
 get_properties_from_object(_, [], []).
-get_properties_from_object(O, [[id=>O,P,_]|_], P).
+get_properties_from_object(O, [[Ids,P,_]|_], P) :-
+	member_of(O, Ids).
 get_properties_from_object(O, [_|T], P) :-
 	get_properties_from_object(O, T, P).
 
@@ -262,7 +263,8 @@ get_relations_from_class(C, [_|T], R) :-
 
 %get_relations_from_object(O, OL, R)
 get_relations_from_object(_, [], []).
-get_relations_from_object(O, [[id=>O,_,R]|_], R).
+get_relations_from_object(O, [[Ids,_,R]|_], R):-
+	member_of(O, Ids).
 get_relations_from_object(O, [_|T], R) :-
 	get_relations_from_object(O, T, R).
 
@@ -289,7 +291,7 @@ delete_property_of_object(Property, O, OldKB, NewKB) :-
 	substitute_element(class(C, M, P, R, OldO), class(C, M, P, R, NewO), OldKB, NewKB),
 	get_properties_from_object(O, OldO, OldP),
 	delete_element([Property,_], OldP, NewP),
-	substitute_element([id=>O,OldP,OR], [id=>O,NewP,OR], OldO, NewO).
+	substitute_element([Ids,OldP,OR], [Ids,NewP,OR], OldO, NewO).
 
 %delete_relation_of_object(R, C, OldKB, NewKB)
 delete_relation_of_object(Relation, O, OldKB, NewKB) :-
@@ -297,7 +299,7 @@ delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 	substitute_element(class(C, M, P, R, OldO), class(C, M, P, R, NewO), OldKB, NewKB),
 	get_relations_from_object(O, OldO, OldR),
 	delete_element([Relation,_], OldR, NewR),
-	substitute_element([id=>O,OP,OldR], [id=>O,OP,NewR], OldO, NewO).
+	substitute_element([Ids,OP,OldR], [Ids,OP,NewR], OldO, NewO).
 
 %------------------------------
 % Useless classes
