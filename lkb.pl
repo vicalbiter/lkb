@@ -85,6 +85,12 @@ is_member_of_object_list(Id, [[Ids,_,_]|_]) :-
 is_member_of_object_list(Id, [_|T]) :-
 	is_member_of_object_list(Id, T).
 
+% Tells if an id exist in an object list and binds the list to which it belongs to Ids
+is_member_of_object_list(Id, [[Ids,_,_]|_], Ids) :-
+	member_of(Id, Ids).
+is_member_of_object_list(Id, [_|T], Ids) :-
+	is_member_of_object_list(Id, T, Ids).
+
 % substitute_element(X, Y, L, NL)
 % Turns every element X in a list L into Y, and binds the new list to NL.
 substitute_element(_, _, [], []).
@@ -126,15 +132,18 @@ new_object(ObjectId, Class, OldKB, NewKB) :-
 
 new_object_property(Property, Weight, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
+	get_object_list(Class, OldKB, OldInst),
+	is_member_of_object_list(ObjectId, OldInst, ObIds),
 	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
-	substitute_element([id=>ObjectId, ObOldProps, ObRels], [id=>ObjectId, ObNewProps, ObRels], OldInst, NewInst),
+	substitute_element([ObIds, ObOldProps, ObRels], [ObIds, ObNewProps, ObRels], OldInst, NewInst),
 	append(ObOldProps, [[Property, Weight]], ObNewProps).
-
 
 new_object_relation(Relation, Weight, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
+	get_object_list(Class, OldKB, OldInst),
+	is_member_of_object_list(ObjectId, OldInst, ObIds),
 	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
-	substitute_element([id=>ObjectId, ObProps, ObOldRels], [id=>ObjectId, ObProps, ObNewRels], OldInst, NewInst),
+	substitute_element([ObIds, ObProps, ObOldRels], [ObIds, ObProps, ObNewRels], OldInst, NewInst),
 	append(ObOldRels, [[Relation, Weight]], ObNewRels).
 
 %------------------------------
