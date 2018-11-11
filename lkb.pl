@@ -75,9 +75,29 @@ member_of(X, [_|T]) :-
 % Gets the class of X inside the KB, and binds it to C.
 get_class_of(_, [], unknown).
 get_class_of(Id, [class(C,_,_,_,O)|_], C) :-
-	member_of([id=>Id,_,_], O).
+	is_member_of_object_list(Id, O).
 get_class_of(Id, [_|T], C) :-
 	get_class_of(Id, T, C).
+
+% Tells if an id exist in an object list
+is_member_of_object_list(Id, [[Ids,_,_]|_]) :-
+	member_of(Id, Ids).
+is_member_of_object_list(Id, [_|T]) :-
+	is_member_of_object_list(Id, T).
+
+% get_object_ids(O, OL)
+% Gets the object ids from a list of objects
+get_object_ids([], []).
+get_object_ids([[Ids,_,_]|T], [Ids|L]) :-
+	get_object_ids(T, L).
+
+% flatten_list(L, NL)
+flatten_list([], []).
+flatten_list([X|T], NL) :-
+	flatten_list(X, L1),
+	flatten_list(T, L2),
+	append(L1, L2, NL).
+flatten_list(L, [L]).
 
 % substitute_element(X, Y, L, NL)
 % Turns every element X in a list L into Y, and binds the new list to NL.
@@ -102,11 +122,6 @@ delete_element(X, [H|T], [H|Y]) :-
 new_class(Name, Mother, OldKB, NewKB) :-
 	append(OldKB, [class(Name, Mother, [], [], [])], NewKB).
 
-new_object(ObjectId, Class, OldKB, NewKB) :-
-	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
-	append(OldInst, [[id=>ObjectId, [], []]], NewInst).
-
-
 new_class_property(Property, Weight, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, OldProps, Rels, Inst), class(Class, Mother, NewProps, Rels, Inst), OldKB, NewKB),
 	append(OldProps, [[Property, Weight]], NewProps).
@@ -116,6 +131,12 @@ new_class_relation(Relation, Weight, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, OldRels, Inst), class(Class, Mother, Props, NewRels, Inst), OldKB, NewKB),
 	append(OldRels, [[Relation, Weight]], NewRels).
 
+%-------------------------------
+
+% Adds a new object of Object id of the form [name_1, name_2...] to a Class in OldKB, and binds the new list to NewKB
+new_object(ObjectId, Class, OldKB, NewKB) :-
+	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
+	append(OldInst, [[ObjectId, [], []]], NewInst).
 
 new_object_property(Property, Weight, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
@@ -270,23 +291,19 @@ delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 % Extension
 %------------------------------
 
-% get_objects_ids(L, NL)
-% get_objects_ids([[id=>X1,[],[]],[id=>X2,[],[]]..., NL)
-% Gets all the object ids from a class' objects list
-
-get_objects_ids([],[]).
-get_objects_ids([[id=>X,_,_]|T], [X|L]) :-
-	get_objects_ids(T, L).
-get_objects_ids([_|T], L) :-
-	get_objects_ids(T, L).
+%get_objects_ids([],[]).
+%get_objects_ids([[id=>X,_,_]|T], [X|L]) :-
+%	get_objects_ids(T, L).
+%get_objects_ids([_|T], L) :-
+%	get_objects_ids(T, L).
 
 % get_objects_from_class(C, KB, L)
 % Gets all the objects from a class C in the KB, and puts them on a list L
-get_objects_from_class(_,[],[]).
-get_objects_from_class(C, [class(C,_,_,_,O)|_], L) :-
-	get_objects_ids(O, L).
-get_objects_from_class(C, [_|T], L) :-
-	get_objects_from_class(C, T, L).
+%get_objects_from_class(_,[],[]).
+%get_objects_from_class(C, [class(C,_,_,_,O)|_], L) :-
+%	get_objects_ids(O, L).
+%get_objects_from_class(C, [_|T], L) :-
+%	get_objects_from_class(C, T, L).
 
 % get_class_children
 get_class_children(_, [], []).
