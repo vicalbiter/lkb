@@ -85,20 +85,6 @@ is_member_of_object_list(Id, [[Ids,_,_]|_]) :-
 is_member_of_object_list(Id, [_|T]) :-
 	is_member_of_object_list(Id, T).
 
-% get_object_ids(O, OL)
-% Gets the object ids from a list of objects
-get_object_ids([], []).
-get_object_ids([[Ids,_,_]|T], [Ids|L]) :-
-	get_object_ids(T, L).
-
-% flatten_list(L, NL)
-flatten_list([], []).
-flatten_list([X|T], NL) :-
-	flatten_list(X, L1),
-	flatten_list(T, L2),
-	append(L1, L2, NL).
-flatten_list(L, [L]).
-
 % substitute_element(X, Y, L, NL)
 % Turns every element X in a list L into Y, and binds the new list to NL.
 substitute_element(_, _, [], []).
@@ -170,6 +156,7 @@ get_mother_class(C, [class(C,M,_,_,_)|_], M).
 get_mother_class(C, [_|T], M):-
 	get_mother_class(C, T, M).
 
+% copy_objects_to_another_class
 % Copies all the objects from class C in the list OldKB to a class X, and binds the new list to NewKB
 copy_objects_to_another_class(C, X, OldKB, NewKB) :-
 	get_object_list(C, OldKB, O),
@@ -188,6 +175,14 @@ get_object_list(C, [_|T], O):-
 change_children_mother_class(C, X, OldKB, NewKB) :-
 	get_class_children(C, OldKB, Children),
 	change_classes_mother_class(Children, X, OldKB, NewKB).
+
+% get_class_children
+get_class_children(_, [], []).
+get_class_children(C, [class(N,C,_,_,_)|T], L) :-
+	get_class_children(C, T, L1),
+	append([N],L1,L).
+get_class_children(C, [_|T], L):-
+	get_class_children(C, T, L).
 
 %change_classes_mother_class(LC, X, OldKB, NewKB)
 % Changes the mother class of a list of classes to X
@@ -288,14 +283,8 @@ delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 	substitute_element([id=>O,OP,OldR], [id=>O,OP,NewR], OldO, NewO).
 
 %------------------------------
-% Extension
+% Useless classes
 %------------------------------
-
-%get_objects_ids([],[]).
-%get_objects_ids([[id=>X,_,_]|T], [X|L]) :-
-%	get_objects_ids(T, L).
-%get_objects_ids([_|T], L) :-
-%	get_objects_ids(T, L).
 
 % get_objects_from_class(C, KB, L)
 % Gets all the objects from a class C in the KB, and puts them on a list L
@@ -305,14 +294,20 @@ delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 %get_objects_from_class(C, [_|T], L) :-
 %	get_objects_from_class(C, T, L).
 
-% get_class_children
-get_class_children(_, [], []).
-get_class_children(C, [class(N,C,_,_,_)|T], L) :-
-	get_class_children(C, T, L1),
-	append([N],L1,L).
-get_class_children(C, [_|T], L):-
-	get_class_children(C, T, L).
+% get_object_ids(O, OL)
 
+% Gets a list of the object id lists from a list of objects
+%get_objects_id_lists([], []).
+%get_objects_id_lists([[Ids,_,_]|T], [Ids|L]) :-
+%	get_objects_id_lists(T, L).
+
+% flatten_list(L, NL)
+flatten_list([], []).
+flatten_list([X|T], NL) :-
+	flatten_list(X, L1),
+	flatten_list(T, L2),
+	append(L1, L2, NL).
+flatten_list(L, [L]).
 
 
 	
