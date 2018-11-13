@@ -366,6 +366,8 @@ resolve_rule(X =>> _, Pref, Prem, R) :-
 	resolve_rule(P, Pref, Prem, R).
 resolve_rule(_, _, _, no).
 
+%is_consequent_of_pref(X, Pref, P, R)
+% Say if a certain X is the consequence of a certain rule R in a list of Preferences, and bind the answer to R
 is_consequent_of_pref(_, [], _, no).
 is_consequent_of_pref([X], [Ant =>> [X,W]|_], Ant =>> [X,W], yes).
 is_consequent_of_pref(X, [_|T], P, R) :-
