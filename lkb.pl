@@ -339,32 +339,50 @@ is_in_list(X,[X|_],yes).
 is_in_list(X,[_|T],A):-
         is_in_list(X,T,A).
 
-% Intersection of two lists
-intersect([],_,[]).
-intersect(_,[],[]).
-intersect([X|T],List2,[X|Rest]):-
-        is_in_list(X,List2,yes),
-        intersect(T,List2,Rest).
+%inferences(Rules, Pref, Prem, L)
+% 
+inferences([], _, _, []).
+inferences([X =>> Y|T], Pref, Prem, [Y|L]) :-
+	infere(X =>> Y, Pref, Prem, yes),
+	inferences(T, Pref, Prem, L).
+inferences([X =>> Y|T], Pref, Prem, L) :-
+	infere(X =>> Y, Pref, Prem, no),
+	inferences(T, Pref, Prem, L). 
 
-%resolve_rules(R, Pref, Prem, L)
-% Say if a list of rules can be inferred from a list of Premises and Preferences, and store the newly inferred properties/relations in L.
-resolve_rules([], _, _, []).
-resolve_rules([X =>> Y|T], Pref, Prem, [Y|L]) :-
-	resolve_rule(X =>> Y, Pref, Prem, yes),
-	resolve_rules(T, Pref, Prem, L).
-resolve_rules([X =>> Y|T], Pref, Prem, L) :-
-	resolve_rule(X =>> Y, Pref, Prem, no),
-	resolve_rules(T, Pref, Prem, L).
+%infere(Rule, Pref, Prem, Ans)
+% Say if a rule can be inferred from a set of Preferences and Premises, and bind the answer to Ans
+infere(X =>> _, Pref, Prem, Ans) :-
+	validate_antecedents(X, Pref, Prem, R),
+	all_yes(R, Ans).
 
-%resolve_rule(R, Pref, Prem, R)
-% Say if a rule R can be inferred from a list of Premises and Preferences, and bind the answer to R.
-resolve_rule(_, _, [], no).
-resolve_rule(X =>> _, _, Prem, yes) :-
-	intersect(X, Prem, X).
-resolve_rule(X =>> _, Pref, Prem, R) :-
-	is_consequent_of_pref(X, Pref, P, yes),
-	resolve_rule(P, Pref, Prem, R).
-resolve_rule(_, _, _, no).
+% validate_antecedents(Ant, Pref, Prem, R)
+% Check if every element of Ant is either explicitly stated in the Premises, or if they can be inferred from the list of Preferences
+validate_antecedents([], _, _, []).
+validate_antecedents([X|T], Pref, Prem, [R|L]) :-
+	validate_antecedent(X, Pref, Prem, R),
+	validate_antecedents(T, Pref, Prem, L).
+
+% validate_antecedent
+% Check if a certain property/relation X is either explicitly stated in the Premises, or if it can be inferred from the list of preferences
+validate_antecedent(_,_,[],no).
+validate_antecedent(X, _, Prem, yes) :-
+	is_in_list(X, Prem, yes).
+validate_antecedent(X, Pref, Prem, yes) :-
+	is_consequent_of_pref([X], Pref, P, yes),
+	extract_antecedents(P, Ant),
+	validate_antecedents(Ant, Pref, Prem, L),
+	all_yes(L, yes).
+validate_antecedent(_,_,_,no).
+
+% Extract the antecedent from a Rule of the form Ant =>> Consequence
+extract_antecedents(Ant =>> _, Ant).
+
+%all_yes(L, R)
+% Check if all the elements in a certain list L are equal to "yes", and bind the answer to R.
+all_yes([], yes).
+all_yes([yes|T], R) :-
+	all_yes(T, R).
+all_yes([no|_], no).
 
 %is_consequent_of_pref(X, Pref, P, R)
 % Say if a certain X is the consequence of a certain rule R in a list of Preferences, and bind the answer to R
