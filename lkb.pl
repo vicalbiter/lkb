@@ -340,7 +340,6 @@ is_in_list(X,[_|T],A):-
         is_in_list(X,T,A).
 
 %inferences(Rules, Pref, Prem, L)
-% 
 inferences([], _, _, []).
 inferences([X =>> Y|T], Pref, Prem, [Y|L]) :-
 	infere(X =>> Y, Pref, Prem, yes),
