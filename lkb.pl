@@ -329,6 +329,8 @@ flatten_list([X|T], NL) :-
 flatten_list(L, [L]).
 
 %------------------------------------
+% Functions for inferring properties/relations from preferences
+%------------------------------------
 
 % X is in the list L
 is_in_list(_,[],unknown).
@@ -344,28 +346,8 @@ intersect([X|T],List2,[X|Rest]):-
         is_in_list(X,List2,yes),
         intersect(T,List2,Rest).
 
-%flatten_preferences(P, FP)
-% Flatten preferences
-%flatten_preferences([], []).
-%flatten_preferences([P|T], [P|L]) :-
-%	is_flat(P, yes),
-%	flatten_preferences(T, L).
-%flatten_preferences([P|T], FP) :-
-%	is_flat(P, no),
-%	flatten_preference(P, L1),
-%	flatten_preferences(T, L2),
-%	append(L1, L2, FP).
-	
-% Flatten preference
-%flatten_preference([], []).
-%flatten_preference(X=>>Z, [X=>>Z|T]) :-
-%	flatten_preference(X, T).
-%flatten_preference(X=>>Y, [X=>>Y|_]). 
-
-%is_flat([_] =>> [_], yes).
-%is_flat(_ =>> _, no).
-
 %resolve_rules(R, Pref, Prem, L)
+% Say if a list of rules can be inferred from a list of Premises and Preferences, and store the newly inferred properties/relations in L.
 resolve_rules([], _, _, []).
 resolve_rules([X =>> Y|T], Pref, Prem, [Y|L]) :-
 	resolve_rule(X =>> Y, Pref, Prem, yes),
@@ -374,8 +356,8 @@ resolve_rules([X =>> Y|T], Pref, Prem, L) :-
 	resolve_rule(X =>> Y, Pref, Prem, no),
 	resolve_rules(T, Pref, Prem, L).
 
-%resolve_rule(R, Pref, Prem, yes)
-% Say if the rule is complied according to the premises and preferences
+%resolve_rule(R, Pref, Prem, R)
+% Say if a rule R can be inferred from a list of Premises and Preferences, and bind the answer to R.
 resolve_rule(_, _, [], no).
 resolve_rule(X =>> _, _, Prem, yes) :-
 	intersect(X, Prem, X).
