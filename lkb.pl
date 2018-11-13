@@ -357,13 +357,13 @@ intersect([X|T],List2,[X|Rest]):-
 %	append(L1, L2, FP).
 	
 % Flatten preference
-flatten_preference([], []).
-flatten_preference(X=>>Z, [X=>>Z|T]) :-
-	flatten_preference(X, T).
-flatten_preference(X=>>Y, [X=>>Y|_]). 
+%flatten_preference([], []).
+%flatten_preference(X=>>Z, [X=>>Z|T]) :-
+%	flatten_preference(X, T).
+%flatten_preference(X=>>Y, [X=>>Y|_]). 
 
-is_flat([_] =>> [_], yes).
-is_flat(_ =>> _, no).
+%is_flat([_] =>> [_], yes).
+%is_flat(_ =>> _, no).
 
 %resolve_rules(R, Pref, Prem, L)
 resolve_rules([], _, _, []).
