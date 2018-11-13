@@ -328,7 +328,67 @@ flatten_list([X|T], NL) :-
 	append(L1, L2, NL).
 flatten_list(L, [L]).
 
+%------------------------------------
 
+% X is in the list L
+is_in_list(_,[],unknown).
+is_in_list(X,[not(X)|_],no).
+is_in_list(X,[X|_],yes).
+is_in_list(X,[_|T],A):-
+        is_in_list(X,T,A).
+
+% Intersection of two lists
+intersect([],_,[]).
+intersect(_,[],[]).
+intersect([X|T],List2,[X|Rest]):-
+        is_in_list(X,List2,yes),
+        intersect(T,List2,Rest).
+
+%flatten_preferences(P, FP)
+% Flatten preferences
+%flatten_preferences([], []).
+%flatten_preferences([P|T], [P|L]) :-
+%	is_flat(P, yes),
+%	flatten_preferences(T, L).
+%flatten_preferences([P|T], FP) :-
+%	is_flat(P, no),
+%	flatten_preference(P, L1),
+%	flatten_preferences(T, L2),
+%	append(L1, L2, FP).
+	
+% Flatten preference
+flatten_preference([], []).
+flatten_preference(X=>>Z, [X=>>Z|T]) :-
+	flatten_preference(X, T).
+flatten_preference(X=>>Y, [X=>>Y|_]). 
+
+is_flat([_] =>> [_], yes).
+is_flat(_ =>> _, no).
+
+%resolve_rules(R, Pref, Prem, L)
+resolve_rules([], _, _, []).
+resolve_rules([X =>> Y|T], Pref, Prem, [Y|L]) :-
+	resolve_rule(X =>> Y, Pref, Prem, yes),
+	resolve_rules(T, Pref, Prem, L).
+resolve_rules([X =>> Y|T], Pref, Prem, L) :-
+	resolve_rule(X =>> Y, Pref, Prem, no),
+	resolve_rules(T, Pref, Prem, L).
+
+%resolve_rule(R, Pref, Prem, yes)
+% Say if the rule is complied according to the premises and preferences
+resolve_rule(_, _, [], no).
+resolve_rule(X =>> _, _, Prem, yes) :-
+	is_in_list(X, Prem, yes).
+resolve_rule(X =>> _, Pref, Prem, R) :-
+	is_consequent_of_pref(X, Pref, P, yes),
+	resolve_rule(P, Pref, Prem, R).
+resolve_rule(_, _, _, no).
+
+is_consequent_of_pref(_, [], _, no).
+is_consequent_of_pref(X, [Ant =>> X|_], Ant =>> X, yes).
+is_consequent_of_pref(X, [_|T], P, R) :-
+	is_consequent_of_pref(X, T, P, R).
+	
 	
 	
 	
