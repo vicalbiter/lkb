@@ -378,14 +378,14 @@ resolve_rules([X =>> Y|T], Pref, Prem, L) :-
 % Say if the rule is complied according to the premises and preferences
 resolve_rule(_, _, [], no).
 resolve_rule(X =>> _, _, Prem, yes) :-
-	is_in_list(X, Prem, yes).
+	intersect(X, Prem, X).
 resolve_rule(X =>> _, Pref, Prem, R) :-
 	is_consequent_of_pref(X, Pref, P, yes),
 	resolve_rule(P, Pref, Prem, R).
 resolve_rule(_, _, _, no).
 
 is_consequent_of_pref(_, [], _, no).
-is_consequent_of_pref(X, [Ant =>> X|_], Ant =>> X, yes).
+is_consequent_of_pref([X], [Ant =>> [X,W]|_], Ant =>> [X,W], yes).
 is_consequent_of_pref(X, [_|T], P, R) :-
 	is_consequent_of_pref(X, T, P, R).
 	
