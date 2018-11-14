@@ -1,1 +1,43 @@
-[class(top,none,[],[],[]),class(animals,top,[[[size=>large,carnivorous]=>>dangerous,2]],[],[]),class(fish,animals,[],[],[]),class(mammals,animals,[[not(lay_eggs),0]],[],[]),class(birds,animals,[[[work=>_6084]=>>live=>_6084,3],[[born=>_6126]=>>live=>_6126,5]],[],[]),class(eagles,birds,[[eat=>fish,0],[carnivorous,0]],[],[[[pete,pedro],[[size=>large,0]],[[not(friend=>arthur),0]]]]),class(penguins,birds,[],[],[[[arthur,arturo],[[work=>mexico,0],[born=>argentina,0]],[]]])]
+[
+class(top,none, [], [], [], [], []),
+
+class(animals, top, [], 
+            [[size => large,carnivorous] =>> [dangerous,2]], 
+            [], 
+            [[not(eat => mammals)] =>> [not(eat => fish),2], [not(eat => mammals)] =>> [not(eat => birds),1],
+                 [eat => X] =>> [not(friend => X),1]],
+            []),
+
+class(seaanimals, animals, [], [], [], [],[]),
+
+class(fish, seaanimals, [have_gills], [], [], [], []),
+
+class(orcas, seaanimals, 
+            [size => large, not(have_gills), carnivorous],   
+            [], 
+            [eat => penguins, larger => fish], 
+            [[larger => X] =>> [eat => X,1]],
+            [[[shamu], [], [], [friend => orcas], []], [[tilikum1, tilikum2], [size => medium], [], [], []]]),
+
+class(mammals, animals, 
+            [not(lay_eggs)], 
+            [], [], [], 
+            [[[topcat,dongato], [size => small],[],[],[]]]),
+
+class(birds, animals,
+            [fly,lay_eggs], 
+            [[work => X] =>> [live => X ,3], [born => X] =>> [live => X ,5]], 
+            [], [], []),
+   	
+class(eagles, birds, 
+            [fly,carnivorous,size => large], 
+            [[fly,carnivorous] =>> [fast,3], [size => large] =>> [not(fast),0], [carnivorous] =>> [fast,2]], 
+            [eat => fish], 
+            [[eat => fish] =>> [eat => seaanimals, 1]],
+            [[[pete1,pete2], [size => large], [], [not(friend => arthur1)], []]]),
+
+class(penguins, birds, 
+            [not(fly),size => medium], 
+            [], [], [],
+            [[[arthur1,arthur2], [work => Mexico, born => Argentina],[],[],[]],[[pingu], [size => small],[], [not(friend => orcas)],[]]])
+]

@@ -246,24 +246,30 @@ delete_all_relations_with_list([Id|T], OldKB, NewKB) :-
 
 %delete_all_relations_with
 delete_all_relations_with(_,[],[]).
-delete_all_relations_with(Id, [class(C,M,P,PP,OldR,OldPR,OldI)|T], [class(C,M,P,PP,NewR,NewPR,NewI)|L]) :-
+delete_all_relations_with(Id, [class(C,M,P,PP,OldR,PR,OldI)|T], [class(C,M,P,PP,NewR,PR,NewI)|L]) :-
 	delete_relations_with(Id, OldR, NewR),
-	delete_relations_with(Id, OldPR, NewPR),	
+%	delete_relations_preferences_with(Id, OldPR, NewPR),	
 	delete_class_relations_with(Id, OldI, NewI),
 	delete_all_relations_with(Id, T, L).
 
 % deletes_list_relation_with
 % Deletes relation with a certain Id (class or object) on a class
 delete_class_relations_with(_, [], []).
-delete_class_relations_with(Id, [[Ids,P,PP,OldR,OldPR]|T], [[Ids,P,PP,NewR,NewPR]|L]) :-
+delete_class_relations_with(Id, [[Ids,P,PP,OldR,PR]|T], [[Ids,P,PP,NewR,PR]|L]) :-
 	delete_relations_with(Id, OldR, NewR),
-	delete_relations_with(Id, OldPR, NewPR),
+%	delete_relations_preferences_with(Id, OldPR, NewPR),
 	delete_class_relations_with(Id, T, L).
 
 % Deletes id from relations list
+%delete_relations_with(Id, OldR, NewR) :-
+%	delete_element([_=>Id,_], OldR, X),
+%	delete_element([not(_=>Id),_], X, NewR).
 delete_relations_with(Id, OldR, NewR) :-
-	delete_element([_=>Id,_], OldR, X),
-	delete_element([not(_=>Id),_], X, NewR).
+	delete_element(_=>Id, OldR, X),
+	delete_element(not(_=>Id), X, NewR).
+delete_relations_preferences_with(Id, OldR, NewR) :-
+	delete_element([_]=>>[_=>Id,_], OldR, X),
+	delete_element([_]=>>[not(_=>Id),_], X, NewR).
 
 %------------------------------------
 
