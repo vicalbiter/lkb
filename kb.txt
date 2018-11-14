@@ -39,5 +39,5 @@ class(eagles, birds,
 class(penguins, birds, 
             [not(fly),size => medium], 
             [], [], [],
-            [[[arthur1,arthur2], [work => Mexico, born => Argentina],[],[],[]],[[pingu], [size => small],[], [not(friend => orcas)],[]]])
+            [[[arthur1,arthur2], [work => mexico, born => argentina],[],[],[]],[[pingu], [size => small],[], [not(friend => orcas)],[]]])
 ]

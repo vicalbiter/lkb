@@ -639,12 +639,18 @@ get_local_classes_properties([H|T],B,Properties):-
 % Picks all objects in a list for which Property holds
 pick_objs_with_property(_,_,[],[]).
 pick_objs_with_property(_,[],_,[]).
-pick_objs_with_property(Property,B,[Id|T],[Id|Rest]):-
+pick_objs_with_property(Property,B,[Id|T],[R|Rest]):-
         get_object_properties(Id,B,Properties),
-        is_in_list(Property,Properties,yes),
+        is_in_list(Property,Properties,R),
         pick_objs_with_property(Property,B,T,Rest).
 pick_objs_with_property(Property,B,[_|T],Rest):-
         pick_objs_with_property(Property,B,T,Rest).
+
+resolve_objects([], [], []).
+resolve_objects([Id|T], [yes|RL], [Id|L]) :-
+	resolve_objects(T, RL, L).
+resolve_objects([_|T], [_|RL], L) :-
+	resolve_objects(T, RL, L).
 
 %-------------------------------
 % Resolve the properties of a class
@@ -747,7 +753,8 @@ get_object_properties(Id,B,Properties):-
 get_property_extension(_,[],[]).
 get_property_extension(Property,B,Objs):-
         get_class_extension(top,B,AllObjs),
-        pick_objs_with_property(Property,B,AllObjs,Objs).
+        pick_objs_with_property(Property,B,AllObjs,RObjs),
+	resolve_objects(AllObjs,RObjs,Objs).
 
 
 
