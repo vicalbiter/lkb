@@ -525,6 +525,18 @@ delete_relation_preference_of_object(Relation, O, OldKB, NewKB) :-
 	delete_element(Relation, OldOPR, NewOPR),
 	substitute_element([Ids,OP,OPP,OR,OldOPR], [Ids,OP,OPP,OR,NewOPR], OldO, NewO).
 
+%****************************************************************
+%---------------------------------------------------------------*
+%-------------------------Changing------------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
+
+%change_class_name(C, OldKB, NewKB)
+change_class_name(C, NewName, OldKB, NewKB) :-
+	%replace_all_relations_with(C, NewName, OldKB, X),
+	change_children_mother_class(C, NewName, Y, Z),
+	substitute_element(class(C, M, P, PP, R, PR, O), class(NewName, M, P, PP, R, PR, O), KB, Y).
+
 
 %****************************************************************
 %---------------------------------------------------------------*
