@@ -531,11 +531,59 @@ delete_relation_preference_of_object(Relation, O, OldKB, NewKB) :-
 %---------------------------------------------------------------*
 %****************************************************************
 
+%------------------------------
+% Functions for deleting the appereances of an object/class in every relation inside the KB
+%------------------------------
+
+%substitute_all_relations_with_list
+%substitute_all_relations_with_list([], L, L).
+%substitute_all_relations_with_list([Id|T], OldKB, NewKB) :-
+%	substitute_all_relations_with(Id, OldKB, X),
+%	substitute_all_relations_with_list(T, X, NewKB).
+
+%substitute_all_relations_with
+substitute_all_relations_with(_,_,[],[]).
+substitute_all_relations_with(Id, NewId, [class(C,M,P,PP,OldR,PR,OldI)|T], [class(C,M,P,PP,NewR,PR,NewI)|L]) :-
+	substitute_relations_with(Id, NewId, OldR, NewR),
+%	substitute_relations_preferences_with(Id, NewId, OldPR, NewPR),	
+	substitute_class_relations_with(Id, NewId, OldI, NewI),
+	substitute_all_relations_with(Id, NewId, T, L).
+
+% substitutes_list_relation_with
+% substitutes relation with a certain Id (class or object) on a class
+substitute_class_relations_with(_, _, [], []).
+substitute_class_relations_with(Id, NewId, [[Ids,P,PP,OldR,PR]|T], [[Ids,P,PP,NewR,PR]|L]) :-
+	substitute_relations_with(Id, NewId, OldR, NewR),
+%	substitute_relations_preferences_with(Id, NewId, OldPR, NewPR),
+	substitute_class_relations_with(Id, NewId, T, L).
+
+% substitutes id from a relations list
+substitute_relations_with(Id, NewId, OldR, NewR) :-
+	substitute_element(Ant=>Id, Ant=>NewId, OldR, X),
+	substitute_element(not(Ant=>Id), not(Ant=>NewId), X, NewR).
+substitute_relations_preferences_with(Id, NewId, OldR, NewR) :-
+	substitute_element([Ant1]=>>[Ant2=>Id,W], [Ant1]=>>[Ant2=>NewId,W], OldR, X),
+	substitute_element([Ant1]=>>[not(Ant2=>Id),W], [Ant1]=>>[not(Ant2=>NewId),W], X, NewR).
+
+%-----------------------------------
+% MAIN Changing routines
+%-----------------------------------
+
 %change_class_name(C, OldKB, NewKB)
 change_class_name(C, NewName, OldKB, NewKB) :-
-	%replace_all_relations_with(C, NewName, OldKB, X),
-	change_children_mother_class(C, NewName, Y, Z),
-	substitute_element(class(C, M, P, PP, R, PR, O), class(NewName, M, P, PP, R, PR, O), KB, Y).
+	substitute_all_relations_with(C, NewName, OldKB, X),
+	change_children_mother_class(C, NewName, X, Y),
+	substitute_element(class(C, M, P, PP, R, PR, O), class(NewName, M, P, PP, R, PR, O), Y, NewKB).
+
+%change_object_name(ObjectId, OldKB, NewKB)
+change_object_name(ObjectId, NewObjectId, OldKB, NewKB) :-
+	get_class_of(ObjectId, OldKB, C),
+	get_class_objects(C, OldKB, OL),
+	is_member_of_object_list(ObjectId, OL, IdList),
+	substitute_all_relations_with(ObjectId, NewObjectId, OldKB, X),
+	substitute_element(ObjectId, NewObjectId, IdList, NewIdList),
+	substitute_element([IdList,OP,OPP,OR,ORR], [NewIdList,OP,OPP,OR,ORR], OL, NewOL),
+	substitute_element(class(C, M, P, PP, R, PR, OL), class(C, M, P, PP, R, PR, NewOL), X, NewKB).
 
 
 %****************************************************************
@@ -730,8 +778,8 @@ get_local_classes_relations([H|T],B,Relations):-
 pick_objs_with_relation(_,_,[],[]).
 pick_objs_with_relation(_,[],_,[]).
 pick_objs_with_relation(Relation,B,[Id|T],[R|Rest]):-
-        get_object_relations(Id,B,Properties),
-        is_in_list(Relation,Properties,R),
+        get_object_relations(Id,B,Relations),
+        is_in_list(Relation,Relations,R),
         pick_objs_with_relation(Relation,B,T,Rest).
 pick_objs_with_relation(Relation,B,[_|T],Rest):-
         pick_objs_with_relation(Relation,B,T,Rest).
