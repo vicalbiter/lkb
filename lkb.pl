@@ -118,17 +118,17 @@ new_class_property(Property, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, OldProps, PrefP, Rels, PrefR, Inst), class(Class, Mother, NewProps, PrefP, Rels, PrefR, Inst), OldKB, NewKB),
 	append(OldProps, [Property], NewProps).
 
-new_class_property_preference(Property, Weight, Class, OldKB, NewKB) :-
+new_class_property_preference(Property, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, OldPrefP, Rels, PrefR, Inst), class(Class, Mother, Props, NewPrefP, Rels, PrefR, Inst), OldKB, NewKB),
-	append(OldPrefP, [[Property, Weight]], NewPrefP).
+	append(OldPrefP, [Property], NewPrefP).
 
 new_class_relation(Relation, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, PrefP, OldRels, PrefR, Inst), class(Class, Mother, Props, PrefP, NewRels, PrefR, Inst), OldKB, NewKB),
 	append(OldRels, [Relation], NewRels).
 
-new_class_relation_preference(Relation, Weight, Class, OldKB, NewKB) :-
+new_class_relation_preference(Relation, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, PrefP, Rels, OldPrefR, Inst), class(Class, Mother, Props, PrefP, Rels, NewPrefR, Inst), OldKB, NewKB),
-	append(OldPrefR, [[Relation, Weight]], NewPrefR).
+	append(OldPrefR, [Relation], NewPrefR).
 
 %-------------------------------
 
@@ -145,13 +145,13 @@ new_object_property(Property, ObjectId, OldKB, NewKB) :-
 	substitute_element([ObIds, ObOldProps, ObPrefP, ObRels, ObPrefR], [ObIds, ObNewProps, ObPrefP, ObRels, ObPrefR], OldInst, NewInst),
 	append(ObOldProps, [Property], ObNewProps).
 
-new_object_property_preference(Property, Weight, ObjectId, OldKB, NewKB) :-
+new_object_property_preference(Property, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_object_list(Class, OldKB, OldInst),
 	is_member_of_object_list(ObjectId, OldInst, ObIds),
 	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
 	substitute_element([ObIds, ObProps, ObOldPrefP, ObRels, ObPrefR], [ObIds, ObProps, ObNewPrefP, ObRels, ObPrefR], OldInst, NewInst),
-	append(ObOldPrefP, [[Property, Weight]], ObNewPrefP).
+	append(ObOldPrefP, [Property], ObNewPrefP).
 
 new_object_relation(Relation, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
@@ -161,13 +161,13 @@ new_object_relation(Relation, ObjectId, OldKB, NewKB) :-
 	substitute_element([ObIds, ObProps, ObPrefP, ObOldRels, ObPrefR], [ObIds, ObProps, ObPrefP, ObNewRels, ObPrefR], OldInst, NewInst),
 	append(ObOldRels, [Relation], ObNewRels).
 
-new_object_property_relation(Relation, Weight, ObjectId, OldKB, NewKB) :-
+new_object_property_relation(Relation, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_object_list(Class, OldKB, OldInst),
 	is_member_of_object_list(ObjectId, OldInst, ObIds),
 	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
 	substitute_element([ObIds, ObProps, ObPrefP, ObRels, ObOldPrefR], [ObIds, ObProps, ObPrefP, ObRels, ObNewPrefR], OldInst, NewInst),
-	append(ObOldPrefR, [[Relation, Weight]], ObNewPrefR).
+	append(ObOldPrefR, [Relation], ObNewPrefR).
 
 %------------------------------
 % Delete
@@ -338,7 +338,7 @@ delete_property_of_class(Property, C, OldKB, NewKB) :-
 % Deletes a specific property preference of a class
 delete_property_preference_of_class(Property, C, OldKB, NewKB) :-
 	get_properties_preferences_from_class(C, OldKB, OldPP),
-	delete_element([Property,_], OldPP, NewPP),
+	delete_element(Property, OldPP, NewPP),
 	substitute_element(class(C, M, P, _, R, PR, O), class(C, M, P, NewPP, R, PR, O), OldKB, NewKB).
 
 %delete_relation_of_class(R, C, OldKB, NewKB)
@@ -352,7 +352,7 @@ delete_relation_of_class(Relation, C, OldKB, NewKB) :-
 % Deletes a specific relation preference of a class
 delete_relation_preference_of_class(Relation, C, OldKB, NewKB) :-
 	get_relations_preferences_from_class(C, OldKB, OldPR),
-	delete_element([Relation,_], OldPR, NewPR),
+	delete_element(Relation, OldPR, NewPR),
 	substitute_element(class(C, M, P, PP, R, _, O), class(C, M, P, PP, R, NewPR, O), OldKB, NewKB).
 
 %delete_property_of_object(P, O, OldKB, NewKB)
@@ -370,7 +370,7 @@ delete_property_preference_of_object(Property, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),		
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
 	get_properties_preferences_from_object(O, OldO, OldOPP),
-	delete_element([Property,_], OldOPP, NewOPP),
+	delete_element(Property, OldOPP, NewOPP),
 	substitute_element([Ids,OP,OldOPP,OR,OPR], [Ids,OP,NewOPP,OR,OPR], OldO, NewO).
 
 %delete_relation_of_object(R, C, OldKB, NewKB)
@@ -386,7 +386,7 @@ delete_relation_preference_of_object(Relation, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
 	get_relations_preferences_from_object(O, OldO, OldOPR),
-	delete_element([Relation,_], OldOPR, NewOPR),
+	delete_element(Relation, OldOPR, NewOPR),
 	substitute_element([Ids,OP,OPP,OR,OldOPR], [Ids,OP,OPP,OR,NewOPR], OldO, NewO).
 
 %------------------------------
