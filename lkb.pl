@@ -121,6 +121,12 @@ intersect([X|T],List2,[X|Rest]):-
         is_in_list(X,List2,yes),
         intersect(T,List2,Rest).
 
+% Turn a list of lists of the form [[[a],[b]],[[c],[d]]] into [[a],[b],[c],[d]]
+flatten_list([], []).
+flatten_list([X|T], NL) :-
+	flatten_list(T, L1),
+	append(X, L1, NL).
+
 %----------------------------------
 % General routines for working with objects  
 %----------------------------------
@@ -580,11 +586,6 @@ is_consequent_of_pref(_, [], _, no).
 is_consequent_of_pref([X], [Ant =>> [X,W]|_], Ant =>> [X,W], yes).
 is_consequent_of_pref(X, [_|T], P, R) :-
 	is_consequent_of_pref(X, T, P, R).
-
-flatten_list([], []).
-flatten_list([X|T], NL) :-
-	flatten_list(T, L1),
-	append(X, L1, NL).
 
 
 %--------------------------------------
