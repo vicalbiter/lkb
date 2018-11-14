@@ -74,19 +74,19 @@ member_of(X, [_|T]) :-
 % get_class_of(X, KB, C)
 % Gets the class of X inside the KB, and binds it to C.
 get_class_of(_, [], unknown).
-get_class_of(Id, [class(C,_,_,_,O)|_], C) :-
+get_class_of(Id, [class(C,_,_,_,_,_,O)|_], C) :-
 	is_member_of_object_list(Id, O).
 get_class_of(Id, [_|T], C) :-
 	get_class_of(Id, T, C).
 
 % Tells if an id exist in an object list
-is_member_of_object_list(Id, [[Ids,_,_]|_]) :-
+is_member_of_object_list(Id, [[Ids,_,_,_,_]|_]) :-
 	member_of(Id, Ids).
 is_member_of_object_list(Id, [_|T]) :-
 	is_member_of_object_list(Id, T).
 
 % Tells if an id exist in an object list and binds the list to which it belongs to Ids
-is_member_of_object_list(Id, [[Ids,_,_]|_], Ids) :-
+is_member_of_object_list(Id, [[Ids,_,_,_,_]|_], Ids) :-
 	member_of(Id, Ids).
 is_member_of_object_list(Id, [_|T], Ids) :-
 	is_member_of_object_list(Id, T, Ids).
@@ -112,39 +112,62 @@ delete_element(X, [H|T], [H|Y]) :-
 %------------------------------
 
 new_class(Name, Mother, OldKB, NewKB) :-
-	append(OldKB, [class(Name, Mother, [], [], [])], NewKB).
+	append(OldKB, [class(Name, Mother, [], [], [], [], [])], NewKB).
 
-new_class_property(Property, Weight, Class, OldKB, NewKB) :-
-	substitute_element(class(Class, Mother, OldProps, Rels, Inst), class(Class, Mother, NewProps, Rels, Inst), OldKB, NewKB),
-	append(OldProps, [[Property, Weight]], NewProps).
+new_class_property(Property, Class, OldKB, NewKB) :-
+	substitute_element(class(Class, Mother, OldProps, PrefP, Rels, PrefR, Inst), class(Class, Mother, NewProps, PrefP, Rels, PrefR, Inst), OldKB, NewKB),
+	append(OldProps, [Property], NewProps).
 
+new_class_property_preference(Property, Weight, Class, OldKB, NewKB) :-
+	substitute_element(class(Class, Mother, Props, OldPrefP, Rels, PrefR, Inst), class(Class, Mother, Props, NewPrefP, Rels, PrefR, Inst), OldKB, NewKB),
+	append(OldPrefP, [[Property, Weight]], NewPrefP).
 
-new_class_relation(Relation, Weight, Class, OldKB, NewKB) :-
-	substitute_element(class(Class, Mother, Props, OldRels, Inst), class(Class, Mother, Props, NewRels, Inst), OldKB, NewKB),
-	append(OldRels, [[Relation, Weight]], NewRels).
+new_class_relation(Relation, Class, OldKB, NewKB) :-
+	substitute_element(class(Class, Mother, Props, PrefP, OldRels, PrefR, Inst), class(Class, Mother, Props, PrefP, NewRels, PrefR, Inst), OldKB, NewKB),
+	append(OldRels, [Relation], NewRels).
+
+new_class_relation_preference(Relation, Weight, Class, OldKB, NewKB) :-
+	substitute_element(class(Class, Mother, Props, PrefP, Rels, OldPrefR, Inst), class(Class, Mother, Props, PrefP, Rels, NewPrefR, Inst), OldKB, NewKB),
+	append(OldPrefR, [[Relation, Weight]], NewPrefR).
 
 %-------------------------------
 
 % Adds a new object of Object id of the form [name_1, name_2...] to a Class in OldKB, and binds the new list to NewKB
 new_object(ObjectId, Class, OldKB, NewKB) :-
-	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
-	append(OldInst, [[ObjectId, [], []]], NewInst).
+	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
+	append(OldInst, [[ObjectId, [], [], [], []]], NewInst).
 
-new_object_property(Property, Weight, ObjectId, OldKB, NewKB) :-
+new_object_property(Property, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_object_list(Class, OldKB, OldInst),
 	is_member_of_object_list(ObjectId, OldInst, ObIds),
-	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
-	substitute_element([ObIds, ObOldProps, ObRels], [ObIds, ObNewProps, ObRels], OldInst, NewInst),
-	append(ObOldProps, [[Property, Weight]], ObNewProps).
+	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
+	substitute_element([ObIds, ObOldProps, ObPrefP, ObRels, ObPrefR], [ObIds, ObNewProps, ObPrefP, ObRels, ObPrefR], OldInst, NewInst),
+	append(ObOldProps, [Property], ObNewProps).
 
-new_object_relation(Relation, Weight, ObjectId, OldKB, NewKB) :-
+new_object_property_preference(Property, Weight, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_object_list(Class, OldKB, OldInst),
 	is_member_of_object_list(ObjectId, OldInst, ObIds),
-	substitute_element(class(Class, Mother, Props, Rels, OldInst), class(Class, Mother, Props, Rels, NewInst), OldKB, NewKB),
-	substitute_element([ObIds, ObProps, ObOldRels], [ObIds, ObProps, ObNewRels], OldInst, NewInst),
-	append(ObOldRels, [[Relation, Weight]], ObNewRels).
+	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
+	substitute_element([ObIds, ObProps, ObOldPrefP, ObRels, ObPrefR], [ObIds, ObProps, ObNewPrefP, ObRels, ObPrefR], OldInst, NewInst),
+	append(ObOldPrefP, [[Property, Weight]], ObNewPrefP).
+
+new_object_relation(Relation, ObjectId, OldKB, NewKB) :-
+	get_class_of(ObjectId, OldKB, Class),
+	get_object_list(Class, OldKB, OldInst),
+	is_member_of_object_list(ObjectId, OldInst, ObIds),
+	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
+	substitute_element([ObIds, ObProps, ObPrefP, ObOldRels, ObPrefR], [ObIds, ObProps, ObPrefP, ObNewRels, ObPrefR], OldInst, NewInst),
+	append(ObOldRels, [Relation], ObNewRels).
+
+new_object_property_relation(Relation, Weight, ObjectId, OldKB, NewKB) :-
+	get_class_of(ObjectId, OldKB, Class),
+	get_object_list(Class, OldKB, OldInst),
+	is_member_of_object_list(ObjectId, OldInst, ObIds),
+	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
+	substitute_element([ObIds, ObProps, ObPrefP, ObRels, ObOldPrefR], [ObIds, ObProps, ObPrefP, ObRels, ObNewPrefR], OldInst, NewInst),
+	append(ObOldPrefR, [[Relation, Weight]], ObNewPrefR).
 
 %------------------------------
 % Delete
@@ -156,12 +179,12 @@ delete_class(C, OldKB, NewKB) :-
 	get_mother_class(C, OldKB, M),
 	copy_objects_to_another_class(C, M, X, Y),
 	change_children_mother_class(C, M, Y, Z),
-	delete_element(class(C,_,_,_,_), Z, NewKB).
+	delete_element(class(C,_,_,_,_,_,_), Z, NewKB).
 
 % get_mother_class(C, KB, M)
 % Gets the mother class from the class C in KB, and binds it to M
 get_mother_class(_, [], none).
-get_mother_class(C, [class(C,M,_,_,_)|_], M).
+get_mother_class(C, [class(C,M,_,_,_,_,_)|_], M).
 get_mother_class(C, [_|T], M):-
 	get_mother_class(C, T, M).
 
@@ -169,13 +192,13 @@ get_mother_class(C, [_|T], M):-
 % Copies all the objects from class C in the list OldKB to a class X, and binds the new list to NewKB
 copy_objects_to_another_class(C, X, OldKB, NewKB) :-
 	get_object_list(C, OldKB, O),
-	substitute_element(class(X, Mother, Props, Rels, OldInst), class(X, Mother, Props, Rels, NewInst), OldKB, NewKB),
+	substitute_element(class(X, Mother, Props, PrefP, Rels, PrefR, OldInst), class(X, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
 	append(OldInst, O, NewInst).
 
 % get_objects_list(C, KB, NL)
 % Gets the object list from the class C in KB, and binds it to NL	
 get_object_list(_, [], []).
-get_object_list(C, [class(C,_,_,_,O)|_], O).
+get_object_list(C, [class(C,_,_,_,_,_,O)|_], O).
 get_object_list(C, [_|T], O):-
 	get_object_list(C, T, O).
 
@@ -187,7 +210,7 @@ change_children_mother_class(C, X, OldKB, NewKB) :-
 
 % get_class_children
 get_class_children(_, [], []).
-get_class_children(C, [class(N,C,_,_,_)|T], L) :-
+get_class_children(C, [class(N,C,_,_,_,_,_)|T], L) :-
 	get_class_children(C, T, L1),
 	append([N],L1,L).
 get_class_children(C, [_|T], L):-
@@ -202,7 +225,7 @@ change_classes_mother_class([C|T], X, OldKB, NewKB) :-
 		
 % Changes the mother class of C to X
 change_class_mother_class(C, X, OldKB, NewKB) :-
-	substitute_element(class(C, _, Props, Rels, Inst), class(C, X, Props, Rels, Inst), OldKB, NewKB).
+	substitute_element(class(C, _, Props, PrefP, Rels, PrefR, Inst), class(C, X, Props, PrefP, Rels, PrefR, Inst), OldKB, NewKB).
 
 %-----------------------------------
 
@@ -212,8 +235,8 @@ delete_object(ObjectId, OldKB, NewKB) :-
 	get_object_list(C, OldKB, OL),
 	is_member_of_object_list(ObjectId, OL, IdList),
 	delete_all_relations_with_list(IdList, OldKB, X),
-	substitute_element(class(C, Mother, Props, Rels, OldInst), class(C, Mother, Props, Rels, NewInst), X, NewKB),
-	delete_element([IdList,_,_],OldInst,NewInst).
+	substitute_element(class(C, Mother, Props, PrefP, Rels, PrefR, OldInst), class(C, Mother, Props, PrefP, Rels, PrefR, NewInst), X, NewKB),
+	delete_element([IdList,_,_,_,_],OldInst,NewInst).
 
 %delete_all_relations_with_list
 delete_all_relations_with_list([], L, L).
@@ -223,16 +246,18 @@ delete_all_relations_with_list([Id|T], OldKB, NewKB) :-
 
 %delete_all_relations_with
 delete_all_relations_with(_,[],[]).
-delete_all_relations_with(Id, [class(C,M,P,OldR,OldI)|T], [class(C,M,P,NewR,NewI)|L]) :-
-	delete_relations_with(Id, OldR, NewR),	
+delete_all_relations_with(Id, [class(C,M,P,PP,OldR,OldPR,OldI)|T], [class(C,M,P,PP,NewR,NewPR,NewI)|L]) :-
+	delete_relations_with(Id, OldR, NewR),
+	delete_relations_with(Id, OldPR, NewPR),	
 	delete_class_relations_with(Id, OldI, NewI),
 	delete_all_relations_with(Id, T, L).
 
 % deletes_list_relation_with
 % Deletes relation with a certain Id (class or object) on a class
 delete_class_relations_with(_, [], []).
-delete_class_relations_with(Id, [[Ids,P,OldR]|T], [[Ids,P,NewR]|L]) :-
+delete_class_relations_with(Id, [[Ids,P,PP,OldR,OldPR]|T], [[Ids,P,PP,NewR,NewPR]|L]) :-
 	delete_relations_with(Id, OldR, NewR),
+	delete_relations_with(Id, OldPR, NewPR),
 	delete_class_relations_with(Id, T, L).
 
 % Deletes id from relations list
@@ -244,29 +269,55 @@ delete_relations_with(Id, OldR, NewR) :-
 
 %get_properties_from_class
 get_properties_from_class(_, [], []).
-get_properties_from_class(C, [class(C,_,P,_,_)|_], P).
+get_properties_from_class(C, [class(C,_,P,_,_,_,_)|_], P).
 get_properties_from_class(C, [_|T], P) :-
 	get_properties_from_class(C, T, P).
 
+%get_properties_preferences_from_class
+get_properties_preferences_from_class(_, [], []).
+get_properties_preferences_from_class(C, [class(C,_,_,PP,_,_,_)|_], PP).
+get_properties_preferences_from_class(C, [_|T], PP) :-
+	get_properties_preferences_from_class(C, T, PP).
+
 %get_properties_from_object
 get_properties_from_object(_, [], []).
-get_properties_from_object(O, [[Ids,P,_]|_], P) :-
+get_properties_from_object(O, [[Ids,P,_,_,_]|_], P) :-
 	member_of(O, Ids).
 get_properties_from_object(O, [_|T], P) :-
 	get_properties_from_object(O, T, P).
 
+%get_properties_preferences_from_object
+get_properties_preferences_from_object(_, [], []).
+get_properties_preferences_from_object(O, [[Ids,_,PP,_,_]|_], PP) :-
+	member_of(O, Ids).
+get_properties_preferences_from_object(O, [_|T], PP) :-
+	get_properties_preferences_from_object(O, T, PP).
+
 %get_relations_from_class
 get_relations_from_class(_, [], []).
-get_relations_from_class(C, [class(C,_,_,R,_)|_], R).
+get_relations_from_class(C, [class(C,_,_,_,R,_,_)|_], R).
 get_relations_from_class(C, [_|T], R) :-
 	get_relations_from_class(C, T, R).
 
+%get_relations_preferences_from_class
+get_relations_preferences_from_class(_, [], []).
+get_relations_preferences_from_class(C, [class(C,_,_,_,_,PR,_)|_], PR).
+get_relations_preferences_from_class(C, [_|T], PR) :-
+	get_relations_preferences_from_class(C, T, PR).
+
 %get_relations_from_object(O, OL, R)
 get_relations_from_object(_, [], []).
-get_relations_from_object(O, [[Ids,_,R]|_], R):-
+get_relations_from_object(O, [[Ids,_,_,R,_]|_], R):-
 	member_of(O, Ids).
 get_relations_from_object(O, [_|T], R) :-
 	get_relations_from_object(O, T, R).
+
+%get_relations_preferences_from_object(O, OL, R)
+get_relations_preferences_from_object(_, [], []).
+get_relations_preferences_from_object(O, [[Ids,_,_,_,PR]|_], PR):-
+	member_of(O, Ids).
+get_relations_preferences_from_object(O, [_|T], PR) :-
+	get_relations_preferences_from_object(O, T, PR).
 
 %------------------------------
 
@@ -274,32 +325,63 @@ get_relations_from_object(O, [_|T], R) :-
 % Deletes a specific property of a class
 delete_property_of_class(Property, C, OldKB, NewKB) :-
 	get_properties_from_class(C, OldKB, OldP),
-	delete_element([Property,_], OldP, NewP),
-	substitute_element(class(C, M, _, R, O), class(C, M, NewP, R, O), OldKB, NewKB).
+	delete_element(Property, OldP, NewP),
+	substitute_element(class(C, M, _, PP, R, PR, O), class(C, M, NewP, PP, R, PR, O), OldKB, NewKB).
+
+%delete_property_preference_of_class(P, C, OldKB, NewKB)
+% Deletes a specific property preference of a class
+delete_property_preference_of_class(Property, C, OldKB, NewKB) :-
+	get_properties_preferences_from_class(C, OldKB, OldPP),
+	delete_element([Property,_], OldPP, NewPP),
+	substitute_element(class(C, M, P, _, R, PR, O), class(C, M, P, NewPP, R, PR, O), OldKB, NewKB).
 
 %delete_relation_of_class(R, C, OldKB, NewKB)
 % Deletes a specific relation of a class
 delete_relation_of_class(Relation, C, OldKB, NewKB) :-
 	get_relations_from_class(C, OldKB, OldR),
-	delete_element([Relation,_], OldR, NewR),
-	substitute_element(class(C, M, P, _, O), class(C, M, P, NewR, O), OldKB, NewKB).
+	delete_element(Relation, OldR, NewR),
+	substitute_element(class(C, M, P, PP, _, PR, O), class(C, M, P, PP, NewR, PR, O), OldKB, NewKB).
+
+%delete_relation_preference_of_class(R, C, OldKB, NewKB)
+% Deletes a specific relation preference of a class
+delete_relation_preference_of_class(Relation, C, OldKB, NewKB) :-
+	get_relations_preferences_from_class(C, OldKB, OldPR),
+	delete_element([Relation,_], OldPR, NewPR),
+	substitute_element(class(C, M, P, PP, R, _, O), class(C, M, P, PP, R, NewPR, O), OldKB, NewKB).
 
 %delete_property_of_object(P, O, OldKB, NewKB)
 % Deletes a specific property of an object
 delete_property_of_object(Property, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),		
-	substitute_element(class(C, M, P, R, OldO), class(C, M, P, R, NewO), OldKB, NewKB),
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
 	get_properties_from_object(O, OldO, OldP),
-	delete_element([Property,_], OldP, NewP),
-	substitute_element([Ids,OldP,OR], [Ids,NewP,OR], OldO, NewO).
+	delete_element(Property, OldP, NewP),
+	substitute_element([Ids,OldP,OPP,OR,OPR], [Ids,NewP,OPP,OR,OPR], OldO, NewO).
+
+%delete_property_preference_of_object(P, O, OldKB, NewKB)
+% Deletes a specific property preference of an object
+delete_property_preference_of_object(Property, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),		
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
+	get_properties_preferences_from_object(O, OldO, OldOPP),
+	delete_element([Property,_], OldOPP, NewOPP),
+	substitute_element([Ids,OP,OldOPP,OR,OPR], [Ids,OP,NewOPP,OR,OPR], OldO, NewO).
 
 %delete_relation_of_object(R, C, OldKB, NewKB)
 delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
-	substitute_element(class(C, M, P, R, OldO), class(C, M, P, R, NewO), OldKB, NewKB),
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
 	get_relations_from_object(O, OldO, OldR),
-	delete_element([Relation,_], OldR, NewR),
-	substitute_element([Ids,OP,OldR], [Ids,OP,NewR], OldO, NewO).
+	delete_element(Relation, OldR, NewR),
+	substitute_element([Ids,OP,OPP,OldR,OPR], [Ids,OP,OPP,NewR,OPR], OldO, NewO).
+
+%delete_relation_preference_of_object(R, C, OldKB, NewKB)
+delete_relation_preference_of_object(Relation, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
+	get_relations_preferences_from_object(O, OldO, OldOPR),
+	delete_element([Relation,_], OldOPR, NewOPR),
+	substitute_element([Ids,OP,OPP,OR,OldOPR], [Ids,OP,OPP,OR,NewOPR], OldO, NewO).
 
 %------------------------------
 % Useless classes
