@@ -581,6 +581,12 @@ is_consequent_of_pref([X], [Ant =>> [X,W]|_], Ant =>> [X,W], yes).
 is_consequent_of_pref(X, [_|T], P, R) :-
 	is_consequent_of_pref(X, T, P, R).
 
+flatten_list([], []).
+flatten_list([X|T], NL) :-
+	flatten_list(T, L1),
+	append(X, L1, NL).
+
+
 %--------------------------------------
 % Routines for working with properties 
 %--------------------------------------
@@ -652,19 +658,101 @@ resolve_objects([Id|T], [yes|RL], [Id|L]) :-
 resolve_objects([_|T], [_|RL], L) :-
 	resolve_objects(T, RL, L).
 
+%--------------------------------------
+% Routines for working with relations 
+%--------------------------------------
+% Gets the relations of a list of classes
+get_classes_relations(_,[],[]).
+get_classes_relations([],_,[]).
+get_classes_relations([H|T],B,Relations):-
+        get_class_relations(H,B,HRelations),
+        get_classes_relations(T,B,OthersRelations),
+        append(HRelations,OthersRelations,Relations).
+
+% get_class_relations_preferences(Class,KB,PrefRels).
+% Gets the list of Relations Preferences of the Class
+get_class_relations_preferences(_,[],[]).
+get_class_relations_preferences(Class,[class(Class,_,_,_,_,PrefRels,_)|_],PrefRels).
+get_class_relations_preferences(Class,[_|T],PrefRels):-
+        get_class_relations_preferences(Class,T,PrefRels).
+
+% get_classes_relations_preferences(Classes,KB,PropRels).
+% Gets the relation preferences  of a list of classes
+get_classes_relations_preferences([],_,[]).
+get_classes_relations_preferences([H|T],B,RelPrefs):-
+        get_class_relations_preferences(H,B,HRelPrefs),
+        get_classes_relations_preferences(T,B,OthersRelPrefs),
+        append(HRelPrefs,OthersRelPrefs,RelPrefs).
+
+% Gets the explicit relations of an object 
+get_local_object_relations([_,_,_,Relations,_],Relations).
+
+% Gets the explicit relations preferences of an object
+get_object_relations_preferences([_,_,_,_,ObjRelPref],ObjRelPref).
+
+% Full relations of a class, no specificity
+all_class_relations(_,[],[]).
+all_class_relations(Class,B,Relations):-
+    get_local_class_relations(Class,B,LocalRelations),
+    get_class_ascendants(Class,B,Ascendants),
+    get_local_classes_relations(Ascendants,B,AscendantsRelations),
+    append(LocalRelations,AscendantsRelations,Relations).
+
+% Relations in present class, no inheritance
+get_local_class_relations(_,[],[]).
+get_local_class_relations(Class,[class(Class,_,_,_,Relations,_,_)|_],Relations).
+get_local_class_relations(Class,[_|T],Relations):-
+        get_local_class_relations(Class,T,Relations).
+
+% Relations of a list of classes
+get_local_classes_relations([],_,[]).
+get_local_classes_relations(_,[],[]).
+get_local_classes_relations([H|T],B,Relations):-
+     get_local_class_relations(H,B,HRelations),
+     get_local_classes_relations(T,B,OthersRelations),
+     append(HRelations,OthersRelations,Relations).
+
+% pick_objs_with_relation(Relation,KB,IdsList,IdswRelation)
+% Picks all objects in a list for which Relation holds
+pick_objs_with_relation(_,_,[],[]).
+pick_objs_with_relation(_,[],_,[]).
+pick_objs_with_relation(Relation,B,[Id|T],[R|Rest]):-
+        get_object_relations(Id,B,Properties),
+        is_in_list(Relation,Properties,R),
+        pick_objs_with_relation(Relation,B,T,Rest).
+pick_objs_with_relation(Relation,B,[_|T],Rest):-
+        pick_objs_with_relation(Relation,B,T,Rest).
+
+
 %-------------------------------
-% Resolve the properties of a class
+% Resolve the properties and relations of a class
 %-------------------------------
 
 % Removes repetitions, inconsistencies, applies inferences,
 % thus gets full properties 
-infer_and_clean(PrefProps,First,Properties):-
+infer_and_clean_props(PrefProps,First,Properties):-
         properties_cleanup(First,CleanL),
-        inferences(PrefProps,PrefProps,CleanL,Inferred),
+%       inferences(PrefProps,PrefProps,CleanL,Inferred),
+	findall(L, inferences(PrefProps,PrefProps,CleanL,L), AllInfLists),
+	flatten_list(AllInfLists,AllInf),
+	delete_repetitions(AllInf, Inferred),
         order_by_weights(Inferred,OrdInferred),
         resolve_by_weights(OrdInferred,Resolved),
         append(CleanL,Resolved,Aux),
         properties_cleanup(Aux,Properties).
+
+% Removes repetitions, inconsistencies, applies inferences,
+% thus gets full properties 
+infer_and_clean_rels(PrefRels,First,Relations):-
+        relations_cleanup(First,CleanL),
+%       inferences(PrefRels,PrefRels,CleanL,Inferred),
+	findall(L, inferences(PrefRels,PrefRels,CleanL,L), AllInfLists),
+	flatten_list(AllInfLists,AllInf),
+	delete_repetitions(AllInf, Inferred),
+        order_by_weights(Inferred,OrdInferred),
+        resolve_by_weights(OrdInferred,Resolved),
+        append(CleanL,Resolved,Aux),
+        relations_cleanup(Aux,Relations).
 
 % resolve_by_weights([[prop1,w1],...,[propK,wK]],L)
 % Picks properties with lower weight
@@ -685,6 +773,11 @@ properties_cleanup(Properties,Solved):-
         delete_repetitions(Properties,Aux1),
         overwrite_attribute(Aux1,Aux2),
         delete_inconsistencies(Aux2,Solved).
+
+relations_cleanup([],[]).
+relations_cleanup(Relations,Solved):-
+        delete_repetitions(Relations,Aux1),
+        delete_inconsistencies(Aux1,Solved).
 
 overwrite_attribute([],[]).
 overwrite_attribute([X => Y|T],[X => Y|Rest]):-
@@ -731,7 +824,7 @@ get_object_membership(Id,B,Classes):-
 get_class_properties(Class,B,Properties):-
         all_class_properties(Class,B,ExplicitProperties),
         get_class_properties_preferences(Class,B,PrefProps),
-        infer_and_clean(PrefProps,ExplicitProperties,Properties).
+        infer_and_clean_props(PrefProps,ExplicitProperties,Properties).
 
 % get_object_properties(Obj,KB,Properties).        
 % Gets the full list of properties of Class in KB, observing preferences
@@ -745,7 +838,28 @@ get_object_properties(Id,B,Properties):-
         get_object_properties_preferences(Obj,ObjPropPref),
         get_classes_properties_preferences(Classes,B, PropPref),
         append(ObjPropPref,PropPref,AllPropPref),
-        infer_and_clean(AllPropPref,AllProps,Properties).
+        infer_and_clean_props(AllPropPref,AllProps,Properties).
+
+% get_class_relations(Class, KB, Relations)
+% Gets the full list of relations of Class in KB, observing preferences
+get_class_relations(Class,B,Relations):-
+        all_class_relations(Class,B,ExplicitRelations),
+        get_class_relations_preferences(Class,B,PrefRels),
+        infer_and_clean_rels(PrefRels,ExplicitRelations,Relations).
+
+% get_object_relations(Obj,KB,Relations).        
+% Gets the full list of relations of Class in KB, observing preferences
+get_object_relations(_,[],[]). 
+get_object_relations(Id,B,Relations):-
+        find_object_by_id(Id,B,Obj),
+        get_local_object_relations(Obj,LocalRelations),
+        get_object_membership(Id,B,Classes),
+        get_classes_relations(Classes,B,InheritedRels),
+        append(LocalRelations,InheritedRels,AllRels),
+        get_object_relations_preferences(Obj,ObjRelPref),
+        get_classes_relations_preferences(Classes,B, RelPref),
+        append(ObjRelPref,RelPref,AllRelPref),
+        infer_and_clean_rels(AllRelPref,AllRels,Relations).
 
 %%THE FOLLOWING IS NOT WORKING: my routine pick_objs_with_property cycles indefinetely
 % get_property_extension(Property, KB, Objs).
@@ -754,6 +868,13 @@ get_property_extension(_,[],[]).
 get_property_extension(Property,B,Objs):-
         get_class_extension(top,B,AllObjs),
         pick_objs_with_property(Property,B,AllObjs,RObjs),
+	resolve_objects(AllObjs,RObjs,Objs).
+
+% Gets the list of objects for which Relation holds
+get_relation_extension(_,[],[]).
+get_relation_extension(Relation,B,Objs):-
+        get_class_extension(top,B,AllObjs),
+        pick_objs_with_relation(Relation,B,AllObjs,RObjs),
 	resolve_objects(AllObjs,RObjs,Objs).
 
 
