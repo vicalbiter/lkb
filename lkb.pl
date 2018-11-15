@@ -779,10 +779,27 @@ pick_objs_with_relation(_,_,[],[]).
 pick_objs_with_relation(_,[],_,[]).
 pick_objs_with_relation(Relation,B,[Id|T],[R|Rest]):-
         get_object_relations(Id,B,Relations),
-        is_in_list(Relation,Relations,R),
+	exists_relation(Relation, Relations, B, R),
+%	is_in_list(Relation,Relations,R),
         pick_objs_with_relation(Relation,B,T,Rest).
 pick_objs_with_relation(Relation,B,[_|T],Rest):-
         pick_objs_with_relation(Relation,B,T,Rest).
+
+exists_relation(_, [], _, no).
+exists_relation(_, _, [], no).
+exists_relation(Relation, [Relation|_], _, yes).
+exists_relation(Ant=>OtherId, [Ant=>Id|_], KB, yes) :-
+	are_same_object(Id, OtherId, KB, yes).
+exists_relation(not(Ant=>OtherId), [not(Ant=>Id)|_], KB, yes) :-
+	are_same_object(Id, OtherId, KB, yes).
+exists_relation(Rel, [_|T], KB, R) :-
+	exists_relation(Rel, T, KB, R).
+
+are_same_object(Id1, Id2, KB, yes) :-
+	get_class_of(Id1, KB, C1),
+	get_class_objects(C1, KB, OL),
+	is_member_of_object_list(Id2, OL).
+are_same_object(_, _, _, no).
 
 
 %-------------------------------
