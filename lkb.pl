@@ -801,6 +801,32 @@ are_same_object(Id1, Id2, KB, yes) :-
 	is_member_of_object_list(Id2, OL).
 are_same_object(_, _, _, no).
 
+% pick_objs_with
+% Build a list of the objects that have a certain Relation, of the form
+% [Object1: [objects it has a Relation with], Object2: [...], ...]
+build_objects_with_relations_list(_,[],_,[]). 
+build_objects_with_relations_list(Relation, [Object|T], KB, ObjWithRelations) :-
+	get_object_relations(Object, KB, Rels),	
+	match_relation(Relation, Rels, Matches),
+	build_objects_with_relations_list(Relation, T, KB, L1),
+	append([Object:Matches], L1, ObjWithRelations).
+build_objects_with_relations_list(Relation, [_|T], KB, ObjWithRelations) :-
+	build_objects_with_relations_list(Relation, T, KB, ObjWithRelations).
+
+match_relation(_,[],[]).
+match_relation(Relation, [Relation=>X|T], [X|L]) :-
+	match_relation(Relation, T, L).
+match_relation(not(Relation), [not(Relation=>X)|T], [X|L]) :-
+	match_relation(not(Relation), T, L).
+match_relation(Relation, [_|T], L) :-
+	match_relation(Relation, T, L).
+
+clean_objects_with_relations_list([], []).
+clean_objects_with_relations_list([X:[Y|Y1]|T], [X:[Y|Y1]|L]) :-
+	clean_objects_with_relations_list(T, L).
+clean_objects_with_relations_list([_|T], L) :-
+	clean_objects_with_relations_list(T, L).
+
 
 %-------------------------------
 % Resolve the properties and relations of a class
@@ -983,10 +1009,10 @@ get_property_extension(Property,B,Objs):-
 
 % Gets the list of objects for which Relation holds
 get_relation_extension(_,[],[]).
-get_relation_extension(Relation,B,Objs):-
+get_relation_extension(Relation,B,ObjRelList):-
         get_class_extension(top,B,AllObjs),
-        pick_objs_with_relation(Relation,B,AllObjs,RObjs),
-	resolve_objects(AllObjs,RObjs,Objs).
+	build_objects_with_relations_list(Relation, AllObjs, B, Aux),
+	clean_objects_with_relations_list(Aux, ObjRelList).
 
 
 
