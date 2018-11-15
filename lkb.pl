@@ -1059,7 +1059,8 @@ get_property_extension(Property,B,Objs):-
         pick_objs_with_property(Property,B,AllObjs,RObjs),
 	resolve_objects(AllObjs,RObjs,Objs).
 
-% Gets the list of objects for which Relation holds
+% Gets the list of objects that has a certain Relation with other objects
+% The output is a list of the form [Object1:[objects it has a Relation with], Object2:[...],...]
 get_relation_extension(_,[],[]).
 get_relation_extension(Relation,B,ObjRelList):-
         get_class_extension(top,B,AllObjs),
