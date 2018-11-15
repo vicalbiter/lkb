@@ -986,6 +986,12 @@ build_not_relations_list(_, [], []).
 build_not_relations_list(Ant, [Id|T], [not(Ant=>Id)|L]) :-
 	build_not_relations_list(Ant, T, L).
 
+print_extension([],[],[]).
+print_extension([H|T],ObjsNotwProp,[H:yes|Rest]):-
+        print_extension(T,ObjsNotwProp,Rest).
+print_extension([],[H|T],[H:no|Rest]):-
+        print_extension([],T,Rest).
+
 %-----------------------------------
 % MAIN Consulting routines
 %-----------------------------------
@@ -1050,22 +1056,24 @@ get_object_relations(Id,B,Relations):-
         append(ObjRelPref,RelPref,AllRelPref),
         infer_and_clean_rels(AllRelPref,AllRels,B,Relations).
 
-%%THE FOLLOWING IS NOT WORKING: my routine pick_objs_with_property cycles indefinetely
 % get_property_extension(Property, KB, Objs).
 % Gets the list of objects for which Property holds
 get_property_extension(_,[],[]).
-get_property_extension(Property,B,Objs):-
+get_property_extension(Property,B,Extension):-
         get_class_extension(top,B,AllObjs),
         pick_objs_with_property(Property,B,AllObjs,RObjs),
-	resolve_objects(AllObjs,RObjs,Objs).
+        resolve_objects(AllObjs,RObjs,ObjswProp),
+        pick_objs_with_property(not(Property),B,AllObjs,NObjs),
+        resolve_objects(AllObjs, NObjs, ObjsNotwProp),
+        print_extension(ObjswProp,ObjsNotwProp,Extension).
 
 % Gets the list of objects that has a certain Relation with other objects
 % The output is a list of the form [Object1:[objects it has a Relation with], Object2:[...],...]
 get_relation_extension(_,[],[]).
-get_relation_extension(Relation,B,ObjRelList):-
+get_relation_extension(Relation,B,Extension):-
         get_class_extension(top,B,AllObjs),
 	build_objects_with_relations_list(Relation, AllObjs, B, Aux),
-	clean_objects_with_relations_list(Aux, ObjRelList).
+	clean_objects_with_relations_list(Aux, Extension).
 
 
 
