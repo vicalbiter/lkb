@@ -316,6 +316,11 @@ insert_pair([X,N],[[H,M]|T],[[H,M]|TOrdered]):-
 %---------------------------------------------------------------*
 %****************************************************************
 
+%-----------------------------------
+% MAIN Creating routines
+%-----------------------------------
+
+% Adds a new class to the list OldKB of name Name, with a parent class Mother, and binds the new list to NewKB
 new_class(Name, Mother, OldKB, NewKB) :-
 	append(OldKB, [class(Name, Mother, [], [], [], [], [])], NewKB).
 
@@ -337,6 +342,8 @@ new_class_relation(Relation, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, PrefP, OldRels, PrefR, Inst), class(Class, Mother, Props, PrefP, NewRels, PrefR, Inst), OldKB, NewKB),
 	append(OldRels, [Relation], NewRels).
 
+% Adds a new Relation Preference to a Class in the list OldKB, and stores the modified list in NewKB
+% The argument "Relation" should be of the form "[ant_1, ant_2,...,ant_n]=>>[consequence,weight]", where ant_k is a relation of the form "att=>value"
 new_class_relation_preference(Relation, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, PrefP, Rels, OldPrefR, Inst), class(Class, Mother, Props, PrefP, Rels, NewPrefR, Inst), OldKB, NewKB),
 	append(OldPrefR, [Relation], NewPrefR).
@@ -344,10 +351,13 @@ new_class_relation_preference(Relation, Class, OldKB, NewKB) :-
 %-------------------------------
 
 % Adds a new object of Object id of the form [name_1, name_2...] to a Class in OldKB, and binds the new list to NewKB
+% The input argument ObjectId should be a list, no matter if it only has one id
 new_object(ObjectId, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
 	append(OldInst, [[ObjectId, [], [], [], []]], NewInst).
 
+% Adds a new object Property to the object corresponding an ObjectId
+% Property should be of the form "property", or "att=>value". ObjectId can be any of the ids (aliases) of a certain Object.
 new_object_property(Property, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_class_objects(Class, OldKB, OldInst),
@@ -356,6 +366,8 @@ new_object_property(Property, ObjectId, OldKB, NewKB) :-
 	substitute_element([ObIds, ObOldProps, ObPrefP, ObRels, ObPrefR], [ObIds, ObNewProps, ObPrefP, ObRels, ObPrefR], OldInst, NewInst),
 	append(ObOldProps, [Property], ObNewProps).
 
+% Adds a new object Property to the object corresponding to an ObjectId
+% Property should be of the form "[ant_1, ant_2,...,ant_n]=>>[consequence,weight]", where ant_k is a relation of the form "att=>value"
 new_object_property_preference(Property, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_class_objects(Class, OldKB, OldInst),
@@ -364,6 +376,8 @@ new_object_property_preference(Property, ObjectId, OldKB, NewKB) :-
 	substitute_element([ObIds, ObProps, ObOldPrefP, ObRels, ObPrefR], [ObIds, ObProps, ObNewPrefP, ObRels, ObPrefR], OldInst, NewInst),
 	append(ObOldPrefP, [Property], ObNewPrefP).
 
+% Adds a new object Relation to the object corresponding to an ObjectId
+% The argument "Relation" should be of the form "[ant_1, ant_2,...,ant_n]=>>[consequence,weight]", where ant_k is a relation of the form "att=>value"
 new_object_relation(Relation, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_class_objects(Class, OldKB, OldInst),
@@ -372,13 +386,21 @@ new_object_relation(Relation, ObjectId, OldKB, NewKB) :-
 	substitute_element([ObIds, ObProps, ObPrefP, ObOldRels, ObPrefR], [ObIds, ObProps, ObPrefP, ObNewRels, ObPrefR], OldInst, NewInst),
 	append(ObOldRels, [Relation], ObNewRels).
 
-new_object_property_relation(Relation, ObjectId, OldKB, NewKB) :-
+% Adds a new Relation Preference to an object corresponding to an ObjectId
+% The argument "Relation" should be of the form "[ant_1, ant_2,...,ant_n]=>>[consequence,weight]", where ant_k is a relation of the form "att=>value"
+new_object_relation_preference(Relation, ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, Class),
 	get_class_objects(Class, OldKB, OldInst),
 	is_member_of_object_list(ObjectId, OldInst, ObIds),
 	substitute_element(class(Class, Mother, Props, PrefP, Rels, PrefR, OldInst), class(Class, Mother, Props, PrefP, Rels, PrefR, NewInst), OldKB, NewKB),
 	substitute_element([ObIds, ObProps, ObPrefP, ObRels, ObOldPrefR], [ObIds, ObProps, ObPrefP, ObRels, ObNewPrefR], OldInst, NewInst),
 	append(ObOldPrefR, [Relation], ObNewPrefR).
+
+%****************************************************************
+%---------------------------------------------------------------*
+%-------------------------Deleting------------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
 
 %------------------------------
 % Functions for deleting the appereances of an object/class in every relation inside the KB
@@ -414,13 +436,12 @@ delete_relations_preferences_with(Id, OldR, NewR) :-
 	delete_element([_]=>>[_=>Id,_], OldR, X),
 	delete_element([_]=>>[not(_=>Id),_], X, NewR).
 
-%****************************************************************
-%---------------------------------------------------------------*
-%-------------------------Deleting------------------------------*
-%---------------------------------------------------------------*
-%****************************************************************
+%-----------------------------------
+% MAIN Deleting routines
+%-----------------------------------
 
 % Deletes class C from the list OldKB and binds the new list to NewKB
+% When deleting the class, all relations with C are deleted, all C's objects are transferred to C's parent class, and C's children's parent class is changed to C's parent class
 delete_class(C, OldKB, NewKB) :-
 	delete_all_relations_with(C, OldKB, X),
 	get_parent_class(C, OldKB, M),
@@ -452,9 +473,9 @@ change_classes_mother_class([C|T], X, OldKB, NewKB) :-
 change_class_mother_class(C, X, OldKB, NewKB) :-
 	substitute_element(class(C, _, Props, PrefP, Rels, PrefR, Inst), class(C, X, Props, PrefP, Rels, PrefR, Inst), OldKB, NewKB).
 
-%-----------------------------------
-
 %delete_object
+% Deletes the object that contains the id ObjectId inside its id list (aliases)
+% When deleting the object, all relations to the object are deleted from the KB
 delete_object(ObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, C),
 	get_class_objects(C, OldKB, OL),
@@ -466,28 +487,32 @@ delete_object(ObjectId, OldKB, NewKB) :-
 %-----------------------------------
 
 %delete_property_of_class(P, C, OldKB, NewKB)
-% Deletes a specific property of a class
+% Deletes a specific property of a class C
+% Property should be a property already present in the class
 delete_property_of_class(Property, C, OldKB, NewKB) :-
 	get_properties_from_class(C, OldKB, OldP),
 	delete_element(Property, OldP, NewP),
 	substitute_element(class(C, M, _, PP, R, PR, O), class(C, M, NewP, PP, R, PR, O), OldKB, NewKB).
 
 %delete_property_preference_of_class(P, C, OldKB, NewKB)
-% Deletes a specific property preference of a class
+% Deletes a specific property preference of a class C
+% Property should be property preference already present in the class
 delete_property_preference_of_class(Property, C, OldKB, NewKB) :-
 	get_properties_preferences_from_class(C, OldKB, OldPP),
 	delete_element(Property, OldPP, NewPP),
 	substitute_element(class(C, M, P, _, R, PR, O), class(C, M, P, NewPP, R, PR, O), OldKB, NewKB).
 
 %delete_relation_of_class(R, C, OldKB, NewKB)
-% Deletes a specific relation of a class
+% Deletes a specific relation of a class C
+% Relation should be a relation already present in the class
 delete_relation_of_class(Relation, C, OldKB, NewKB) :-
 	get_relations_from_class(C, OldKB, OldR),
 	delete_element(Relation, OldR, NewR),
 	substitute_element(class(C, M, P, PP, _, PR, O), class(C, M, P, PP, NewR, PR, O), OldKB, NewKB).
 
 %delete_relation_preference_of_class(R, C, OldKB, NewKB)
-% Deletes a specific relation preference of a class
+% Deletes a specific relation preference of a class C
+% Relation should be a relation preference already present in the class
 delete_relation_preference_of_class(Relation, C, OldKB, NewKB) :-
 	get_relations_preferences_from_class(C, OldKB, OldPR),
 	delete_element(Relation, OldPR, NewPR),
@@ -496,7 +521,8 @@ delete_relation_preference_of_class(Relation, C, OldKB, NewKB) :-
 %-------------------------------------
 
 %delete_property_of_object(P, O, OldKB, NewKB)
-% Deletes a specific property of an object
+% Deletes a specific property of an object O
+% Property should be a property already present in the object's properties list
 delete_property_of_object(Property, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),		
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -505,7 +531,8 @@ delete_property_of_object(Property, O, OldKB, NewKB) :-
 	substitute_element([Ids,OldP,OPP,OR,OPR], [Ids,NewP,OPP,OR,OPR], OldO, NewO).
 
 %delete_property_preference_of_object(P, O, OldKB, NewKB)
-% Deletes a specific property preference of an object
+% Deletes a specific property preference of an object O
+% Property should be a property preference already present in the object's properties preferences list
 delete_property_preference_of_object(Property, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),		
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -514,7 +541,8 @@ delete_property_preference_of_object(Property, O, OldKB, NewKB) :-
 	substitute_element([Ids,OP,OldOPP,OR,OPR], [Ids,OP,NewOPP,OR,OPR], OldO, NewO).
 
 %delete_relation_of_object(R, C, OldKB, NewKB)
-% Deletes a specific relation of an object
+% Deletes a specific relation of an object O
+% Relation should be a relation already present in the object's relations list
 delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -523,7 +551,8 @@ delete_relation_of_object(Relation, O, OldKB, NewKB) :-
 	substitute_element([Ids,OP,OPP,OldR,OPR], [Ids,OP,OPP,NewR,OPR], OldO, NewO).
 
 %delete_relation_preference_of_object(R, C, OldKB, NewKB)
-% Deletes a specific relation preference of an object
+% Deletes a specific relation preference of an object O
+% Relation should be a relation preference already present in the object's relations preferences list
 delete_relation_preference_of_object(Relation, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -570,12 +599,14 @@ substitute_relations_preferences_with(Id, NewId, OldR, NewR) :-
 %-----------------------------------
 
 %change_class_name(C, OldKB, NewKB)
+% Changes the class C's name of C to NewName
 change_class_name(C, NewName, OldKB, NewKB) :-
 	substitute_all_relations_with(C, NewName, OldKB, X),
 	change_children_mother_class(C, NewName, X, Y),
 	substitute_element(class(C, M, P, PP, R, PR, O), class(NewName, M, P, PP, R, PR, O), Y, NewKB).
 
 %change_object_name(ObjectId, OldKB, NewKB)
+% Changes the object ObjectId's id to NewObjectId (all its other aliases remain the same)
 change_object_name(ObjectId, NewObjectId, OldKB, NewKB) :-
 	get_class_of(ObjectId, OldKB, C),
 	get_class_objects(C, OldKB, OL),
@@ -586,30 +617,40 @@ change_object_name(ObjectId, NewObjectId, OldKB, NewKB) :-
 	substitute_element(class(C, M, P, PP, R, PR, OL), class(C, M, P, PP, R, PR, NewOL), X, NewKB).
 
 %change_property_of_class
+% Changes a specific Property of a class C to NewProperty
+% This function overwrites Property. To change a property value, this needs to be used as in the example: change_property_of_class(size=>medium, size=>small, penguins, KB, NewKB)
 change_property_of_class(Property, NewProperty, C, OldKB, NewKB) :-
 	get_properties_from_class(C, OldKB, OldP),
 	substitute_element(Property, NewProperty, OldP, NewP),
 	substitute_element(class(C, M, _, PP, R, PR, O), class(C, M, NewP, PP, R, PR, O), OldKB, NewKB).
 
 %change_property_preference_of_class
+% Changes a specific Property Preference of a class C to NewPropertyPref
+% This function always overwrites PropertyPref. To change the weight of a certain PropertyPref, both the PropertyPref and the NewPropertyPref should be written out in the form [ant_1,ant_2...ant_n]=>>[consequence,weight]
 change_property_preference_of_class(PropertyPref, NewPropertyPref, C, OldKB, NewKB) :-
 	get_properties_preferences_from_class(C, OldKB, OldPP),
 	substitute_element(PropertyPref, NewPropertyPref, OldPP, NewPP),
 	substitute_element(class(C, M, P, _, R, PR, O), class(C, M, P, NewPP, R, PR, O), OldKB, NewKB).
 
 %change_relation_of_class
+% Changes a specific Relation of a class C to NewRelation
+% This function overwrites Relation. To change a property relation (e.g. to modify who is related to), this needs to be used as in the example: change_relation_of_class(friend=>birds, friend=>fish, penguins, KB, NewKB)
 change_relation_of_class(Relation, NewRelation, C, OldKB, NewKB) :-
 	get_relations_from_class(C, OldKB, OldR),
 	substitute_element(Relation, NewRelation, OldR, NewR),
 	substitute_element(class(C, M, P, PP, _, PR, O), class(C, M, P, PP, NewR, PR, O), OldKB, NewKB).
 
 %change_relation_preference_of_class
+% Changes a specific Relation Preference of a class C to NewRelationPref
+% This function always overwrites RelationPref. To change the weight of a certain RelationPref, both the RelationPref and the NewRelationPref should be written out in the form [ant_1,ant_2...ant_n]=>>[consequence,weight]
 change_relation_preference_of_class(RelationPref, NewRelationPref, C, OldKB, NewKB) :-
 	get_relations_preferences_from_class(C, OldKB, OldPR),
 	substitute_element(RelationPref, NewRelationPref, OldPR, NewPR),
 	substitute_element(class(C, M, P, PP, R, _, O), class(C, M, P, PP, R, NewPR, O), OldKB, NewKB).
 
 %change_property_of_object
+% Changes a specific Property of an object that has an id of O to NewProperty
+% This function overwrites Property. To change a property value, this needs to be used as in the example: change_property_of_object(size=>medium, size=>small, arthur, KB, NewKB)
 change_property_of_object(Property, NewProperty, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -618,7 +659,8 @@ change_property_of_object(Property, NewProperty, O, OldKB, NewKB) :-
 	substitute_element([Ids,OldP,OPP,OR,OPR], [Ids,NewP,OPP,OR,OPR], OldO, NewO).
 
 %change_property_preference_of_object(P, O, OldKB, NewKB)
-% Changes a specific property preference of an object
+% Changes a specific Property Preference PropertyPref of an object with id O to NewPropertyPref
+% This function always overwrites PropertyPref. To change the weight of a certain PropertyPref, both the PropertyPref and the NewPropertyPref should be written out in the form [ant_1,ant_2...ant_n]=>>[consequence,weight]
 change_property_preference_of_object(PropertyPref, NewPropertyPref, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),		
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -627,7 +669,8 @@ change_property_preference_of_object(PropertyPref, NewPropertyPref, O, OldKB, Ne
 	substitute_element([Ids,OP,OldOPP,OR,OPR], [Ids,OP,NewOPP,OR,OPR], OldO, NewO).
 
 %change_relation_of_object(R, C, OldKB, NewKB)
-% Changes a specific relation of an object
+% Changes a specific Relation of an object with id O to NewRelation
+% This function overwrites Relation. To change a relation value, this needs to be used as in the example: change_relation_of_object(eat=>fish, eat=>plants, arthur, KB, NewKB)
 change_relation_of_object(Relation, NewRelation, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -636,7 +679,8 @@ change_relation_of_object(Relation, NewRelation, O, OldKB, NewKB) :-
 	substitute_element([Ids,OP,OPP,OldR,OPR], [Ids,OP,OPP,NewR,OPR], OldO, NewO).
 
 %change_relation_preference_of_object(R, C, OldKB, NewKB)
-% Changes a specific relation preference of an object
+% Changes a specific Relation Preference RelationPref of an object with id O to NewRelationPref
+% This function always overwrites RelationPref. To change the weight of a certain RelationPref, both the RelationPref and the NewRelationPref should be written out in the form [ant_1,ant_2...ant_n]=>>[consequence,weight]
 change_relation_preference_of_object(RelationPref, NewRelationPref, O, OldKB, NewKB) :-
 	get_class_of(O, OldKB, C),
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
@@ -1074,6 +1118,7 @@ get_property_extension(Property,B,Extension):-
         print_extension(ObjswProp,ObjsNotwProp,Extension).
 
 % Gets the list of objects that has a certain Relation with other objects
+% The argument Relation should be the "value" part of a relation "value=>attribute"
 % The output is a list of the form [Object1:[objects it has a Relation with], Object2:[...],...]
 get_relation_extension(_,[],[]).
 get_relation_extension(Relation,B,Extension):-
