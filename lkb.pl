@@ -929,6 +929,22 @@ clean_objects_with_relations_list([X:[Y|Y1]|T], [X:[Y|Y1]|L]) :-
 clean_objects_with_relations_list([_|T], L) :-
 	clean_objects_with_relations_list(T, L).
 
+% Build a list of the objects that have a certain property
+build_objects_with_properties_list(_,[],_,[]).
+build_objects_with_properties_list(Property, [Object|T], KB, ObjWithProperties) :-
+	get_object_properties(Object, KB, Props),
+	match_property(Property, Props, Matches),
+	build_objects_with_properties_list(Property, T, KB, L1),
+	append([Object:Matches], L1, ObjWithProperties).
+
+match_property(_,[],unknown).
+match_property(Property, [Property=>X|_], X).
+match_property(not(Property), [not(Property=>X)|_], X).
+match_property(Property, [not(Property)|_], no).
+match_property(Property, [Property|_], yes).
+match_property(Property, [_|T], X) :-
+	match_property(Property, T, X).
+
 
 %-------------------------------
 % Resolve the properties and relations of a class
@@ -1111,11 +1127,7 @@ get_object_relations(Id,B,Relations):-
 get_property_extension(_,[],[]).
 get_property_extension(Property,B,Extension):-
         get_class_extension(top,B,AllObjs),
-        pick_objs_with_property(Property,B,AllObjs,RObjs),
-        resolve_objects(AllObjs,RObjs,ObjswProp),
-        pick_objs_with_property(not(Property),B,AllObjs,NObjs),
-        resolve_objects(AllObjs, NObjs, ObjsNotwProp),
-        print_extension(ObjswProp,ObjsNotwProp,Extension).
+	build_objects_with_properties_list(Property, AllObjs, B, Extension).
 
 % Gets the list of objects that has a certain Relation with other objects
 % The argument Relation should be the "value" part of a relation "value=>attribute"
