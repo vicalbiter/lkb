@@ -319,14 +319,20 @@ insert_pair([X,N],[[H,M]|T],[[H,M]|TOrdered]):-
 new_class(Name, Mother, OldKB, NewKB) :-
 	append(OldKB, [class(Name, Mother, [], [], [], [], [])], NewKB).
 
+% Adds a new Property to a Class in the list OldKB, and stores the modified list in NewKB
+% The argument "Property" should be of the form "property", or the form "att=>value" 
 new_class_property(Property, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, OldProps, PrefP, Rels, PrefR, Inst), class(Class, Mother, NewProps, PrefP, Rels, PrefR, Inst), OldKB, NewKB),
 	append(OldProps, [Property], NewProps).
 
+% Adds a new Property Preference to a Class in the list OldKB, and stores the modified list in NewKB
+% The argument "Property" should be of the form [ant_1,ant_2...ant_n]=>>[consequence,weight], where ant_k is a property of the form "property" or "att=>value"
 new_class_property_preference(Property, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, OldPrefP, Rels, PrefR, Inst), class(Class, Mother, Props, NewPrefP, Rels, PrefR, Inst), OldKB, NewKB),
 	append(OldPrefP, [Property], NewPrefP).
 
+% Adds a new Relation to a Class in the list OldKB, and stores the modified list in NewKB.
+% The argument "Relation" should be of the form "att=>value"
 new_class_relation(Relation, Class, OldKB, NewKB) :-
 	substitute_element(class(Class, Mother, Props, PrefP, OldRels, PrefR, Inst), class(Class, Mother, Props, PrefP, NewRels, PrefR, Inst), OldKB, NewKB),
 	append(OldRels, [Relation], NewRels).
