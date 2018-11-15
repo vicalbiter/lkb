@@ -821,7 +821,7 @@ infer_and_clean_props(PrefProps,First,Properties):-
 
 % Removes repetitions, inconsistencies, applies inferences,
 % thus gets full properties 
-infer_and_clean_rels(PrefRels,First,Relations):-
+infer_and_clean_rels(PrefRels,First,KB,Relations):-
         relations_cleanup(First,CleanL),
 %       inferences(PrefRels,PrefRels,CleanL,Inferred),
 	findall(L, inferences(PrefRels,PrefRels,CleanL,L), AllInfLists),
@@ -829,8 +829,9 @@ infer_and_clean_rels(PrefRels,First,Relations):-
 	delete_repetitions(AllInf, Inferred),
         order_by_weights(Inferred,OrdInferred),
         resolve_by_weights(OrdInferred,Resolved),
-        append(CleanL,Resolved,Aux),
-        relations_cleanup(Aux,Relations).
+        append(CleanL,Resolved,Aux1),
+	transform_relations(Aux1,KB,Aux2),
+        relations_cleanup(Aux2,Relations).
 
 % resolve_by_weights([[prop1,w1],...,[propK,wK]],L)
 % Picks properties with lower weight
@@ -874,7 +875,39 @@ delete_inconsistencies([X|T],[X|Rest]):-
 delete_inconsistencies([_|T],Solved):-
         delete_inconsistencies(T,Solved).
 
-        
+% Transforms a list of relations into a list of to-Object relations only
+transform_relations([],_,[]).
+transform_relations([Relation|T], KB, Relations) :-
+	extract_relation_components(Relation, _, Class),
+	is_class(Class, KB),
+	transform_to_object_relations(Relation, KB, L1),
+	transform_relations(T, KB, L2),
+	append(L1, L2, Relations).
+transform_relations([Relation|T], KB, [Relation|L]) :-
+	transform_relations(T, KB, L).
+
+extract_relation_components(Ant=>Class, Ant, Class).
+extract_relation_components(not(Ant=>Class), Ant, Class).
+
+is_class(Class, KB) :-
+	member_of(class(Class,_,_,_,_,_,_),KB).
+
+% Transforms a to-Class relation to a list of to-Object relations
+transform_to_object_relations(Ant=>Class, KB, L) :-
+	get_class_extension(Class, KB, OL),
+	build_relations_list(Ant, OL, L).
+transform_to_object_relations(not(Ant=>Class), KB, L) :-
+	get_class_extension(Class, KB, OL),
+	build_not_relations_list(Ant, OL, L).
+
+build_relations_list(_, [], []).
+build_relations_list(Ant, [Id|T], [Ant=>Id|L]) :-
+	build_relations_list(Ant, T, L).
+
+build_not_relations_list(_, [], []).
+build_not_relations_list(Ant, [Id|T], [not(Ant=>Id)|L]) :-
+	build_not_relations_list(Ant, T, L).
+
 %-----------------------------------
 % MAIN Consulting routines
 %-----------------------------------
@@ -923,7 +956,7 @@ get_object_properties(Id,B,Properties):-
 get_class_relations(Class,B,Relations):-
         all_class_relations(Class,B,ExplicitRelations),
         get_class_relations_preferences(Class,B,PrefRels),
-        infer_and_clean_rels(PrefRels,ExplicitRelations,Relations).
+        infer_and_clean_rels(PrefRels,ExplicitRelations,B,Relations).
 
 % get_object_relations(Obj,KB,Relations).        
 % Gets the full list of relations of Class in KB, observing preferences
@@ -937,7 +970,7 @@ get_object_relations(Id,B,Relations):-
         get_object_relations_preferences(Obj,ObjRelPref),
         get_classes_relations_preferences(Classes,B, RelPref),
         append(ObjRelPref,RelPref,AllRelPref),
-        infer_and_clean_rels(AllRelPref,AllRels,Relations).
+        infer_and_clean_rels(AllRelPref,AllRels,B,Relations).
 
 %%THE FOLLOWING IS NOT WORKING: my routine pick_objs_with_property cycles indefinetely
 % get_property_extension(Property, KB, Objs).
