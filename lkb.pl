@@ -535,12 +535,6 @@ delete_relation_preference_of_object(Relation, O, OldKB, NewKB) :-
 % Functions for deleting the appereances of an object/class in every relation inside the KB
 %------------------------------
 
-%substitute_all_relations_with_list
-%substitute_all_relations_with_list([], L, L).
-%substitute_all_relations_with_list([Id|T], OldKB, NewKB) :-
-%	substitute_all_relations_with(Id, OldKB, X),
-%	substitute_all_relations_with_list(T, X, NewKB).
-
 %substitute_all_relations_with
 substitute_all_relations_with(_,_,[],[]).
 substitute_all_relations_with(Id, NewId, [class(C,M,P,PP,OldR,PR,OldI)|T], [class(C,M,P,PP,NewR,PR,NewI)|L]) :-
@@ -585,6 +579,64 @@ change_object_name(ObjectId, NewObjectId, OldKB, NewKB) :-
 	substitute_element([IdList,OP,OPP,OR,ORR], [NewIdList,OP,OPP,OR,ORR], OL, NewOL),
 	substitute_element(class(C, M, P, PP, R, PR, OL), class(C, M, P, PP, R, PR, NewOL), X, NewKB).
 
+%change_property_of_class
+change_property_of_class(Property, NewProperty, C, OldKB, NewKB) :-
+	get_properties_from_class(C, OldKB, OldP),
+	substitute_element(Property, NewProperty, OldP, NewP),
+	substitute_element(class(C, M, _, PP, R, PR, O), class(C, M, NewP, PP, R, PR, O), OldKB, NewKB).
+
+%change_property_preference_of_class
+change_property_preference_of_class(PropertyPref, NewPropertyPref, C, OldKB, NewKB) :-
+	get_properties_preferences_from_class(C, OldKB, OldPP),
+	substitute_element(PropertyPref, NewPropertyPref, OldPP, NewPP),
+	substitute_element(class(C, M, P, _, R, PR, O), class(C, M, P, NewPP, R, PR, O), OldKB, NewKB).
+
+%change_relation_of_class
+change_relation_of_class(Relation, NewRelation, C, OldKB, NewKB) :-
+	get_relations_from_class(C, OldKB, OldR),
+	substitute_element(Relation, NewRelation, OldR, NewR),
+	substitute_element(class(C, M, P, PP, _, PR, O), class(C, M, P, PP, NewR, PR, O), OldKB, NewKB).
+
+%change_relation_preference_of_class
+change_relation_preference_of_class(RelationPref, NewRelationPref, C, OldKB, NewKB) :-
+	get_relations_preferences_from_class(C, OldKB, OldPR),
+	substitute_element(RelationPref, NewRelationPref, OldPR, NewPR),
+	substitute_element(class(C, M, P, PP, R, _, O), class(C, M, P, PP, R, NewPR, O), OldKB, NewKB).
+
+%change_property_of_object
+change_property_of_object(Property, NewProperty, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
+	get_properties_from_object(O, OldO, OldP),
+	substitute_element(Property, NewProperty, OldP, NewP),
+	substitute_element([Ids,OldP,OPP,OR,OPR], [Ids,NewP,OPP,OR,OPR], OldO, NewO).
+
+%change_property_preference_of_object(P, O, OldKB, NewKB)
+% Changes a specific property preference of an object
+change_property_preference_of_object(PropertyPref, NewPropertyPref, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),		
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
+	get_properties_preferences_from_object(O, OldO, OldOPP),
+	substitute_element(PropertyPref, NewPropertyPref, OldOPP, NewOPP),
+	substitute_element([Ids,OP,OldOPP,OR,OPR], [Ids,OP,NewOPP,OR,OPR], OldO, NewO).
+
+%change_relation_of_object(R, C, OldKB, NewKB)
+% Changes a specific relation of an object
+change_relation_of_object(Relation, NewRelation, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
+	get_relations_from_object(O, OldO, OldR),
+	substitute_element(Relation, NewRelation, OldR, NewR),
+	substitute_element([Ids,OP,OPP,OldR,OPR], [Ids,OP,OPP,NewR,OPR], OldO, NewO).
+
+%change_relation_preference_of_object(R, C, OldKB, NewKB)
+% Changes a specific relation preference of an object
+change_relation_preference_of_object(RelationPref, NewRelationPref, O, OldKB, NewKB) :-
+	get_class_of(O, OldKB, C),
+	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
+	get_relations_preferences_from_object(O, OldO, OldOPR),
+	substitute_element(RelationPref, NewRelationPref, OldOPR, NewOPR),
+	substitute_element([Ids,OP,OPP,OR,OldOPR], [Ids,OP,OPP,OR,NewOPR], OldO, NewO).
 
 %****************************************************************
 %---------------------------------------------------------------*
