@@ -656,7 +656,8 @@ change_property_of_object(Property, NewProperty, O, OldKB, NewKB) :-
 	substitute_element(class(C, M, P, PP, R, PR, OldO), class(C, M, P, PP, R, PR, NewO), OldKB, NewKB),
 	get_properties_from_object(O, OldO, OldP),
 	substitute_element(Property, NewProperty, OldP, NewP),
-	substitute_element([Ids,OldP,OPP,OR,OPR], [Ids,NewP,OPP,OR,OPR], OldO, NewO).
+	substitute_element([Ids,OldP,OPP,OR,OPR], [Ids,NewP,OPP,OR,OPR], OldO, NewO),
+	member_of(O, Ids).
 
 %change_property_preference_of_object(P, O, OldKB, NewKB)
 % Changes a specific Property Preference PropertyPref of an object with id O to NewPropertyPref
@@ -1213,10 +1214,10 @@ validate_placed_items(KB, [_|Items], PlacedItems) :-
 
 
 % Get list of observed shelves
-get_list_of_observed_shelves(KB, ObservedShelves) :-
+get_list_of_visited_shelves(KB, ObservedShelves) :-
 	get_class_extension(world, KB, Places),
 	validate_shelf_types(KB, Places, Shelves),
-	get_observed_property_from_shelves(KB, Shelves, 1, ObservedShelves),
+	get_visited_property_from_shelves(KB, Shelves, 1, ObservedShelves),
 	!.
 
 validate_shelf_types(_, [], []).
@@ -1227,13 +1228,13 @@ validate_shelf_types(KB, [Place|Places], [Place|Shelves]) :-
 validate_shelf_types(KB, [_|Places], Shelves) :-
 	validate_shelf_types(KB, Places, Shelves).
 
-get_observed_property_from_shelves(_, [], _, []).
-get_observed_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShelves]) :-
+get_visited_property_from_shelves(_, [], _, []).
+get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShelves]) :-
 	get_explicit_object_properties(Shelf, KB, ShelfProperties),
 	get_property_from_list(id, ShelfProperties, X),
 	get_property_from_list(visited, ShelfProperties, ObservedStatus),
 	Y is X + 1,
-	get_observed_property_from_shelves(KB, Shelves, Y, ObsShelves).
+	get_visited_property_from_shelves(KB, Shelves, Y, ObsShelves).
 
 %Saca lista de de lugares en el mundo
 %Forma una lista con aquellos que tengan type=>shelf
