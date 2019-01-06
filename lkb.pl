@@ -1144,15 +1144,25 @@ get_relation_extension(Relation,B,Extension):-
 %********************************************************%
 %********************************************************%
 %********************************************************%
-%********************************************************%
-%********************************************************%
-%********************************************************%
 
 %****************************************************************
 %---------------------------------------------------------------*
 %---------------------Supermarket Robot-------------------------*
 %---------------------------------------------------------------*
 %****************************************************************
+
+%********************************************************%
+%********************************************************%
+%********************************************************%
+%********************************************************%
+%********************************************************%
+
+%****************************************************************
+%---------------------------------------------------------------*
+%--------General Functions for Knowledge Extraction-------------*
+%---------------------------------------------------------------*
+%****************************************************************
+
 
 % Get list of the ideal locations of the items in GF
 get_ideal_locations_gf(KB, NShelves, IdealGF) :-
@@ -1204,6 +1214,7 @@ get_list_of_placed_items(KB, PlacedItems) :-
 	validate_placed_items(KB, AllItems, PlacedItems),
 	!.
 
+% Auxiliary function to check which items in a list of items are known/reported to be in the world
 validate_placed_items(_, [], []).
 validate_placed_items(KB, [Item|Items], [Item|PlacedItems]) :-
 	get_explicit_object_properties(Item, KB, ItemProperties),
@@ -1213,12 +1224,20 @@ validate_placed_items(KB, [_|Items], PlacedItems) :-
 	validate_placed_items(KB, Items, PlacedItems).
 
 
-% Get list of observed shelves
+% Gets the list of the shelves that have already been visited by the robot. ObservedShelves is of the form [1 1 0 ...]. If shelf[i] = 1, the shelf with id i has already been visited. If it's 0, then it hasn't.  
 get_list_of_visited_shelves(KB, ObservedShelves) :-
 	get_class_extension(world, KB, Places),
 	validate_shelf_types(KB, Places, Shelves),
-	get_visited_property_from_shelves(KB, Shelves, 1, ObservedShelves),
+	get_visited_property_from_shelves(KB, Shelves, 1, ShelvesYesNo),
+	transform_yesno_to_zeroone(ShelvesYesNo, ObservedShelves),
 	!.
+
+% Auxiliary functions to get the list of visited shelves
+transform_yesno_to_zeroone([], []).
+transform_yesno_to_zeroone([no|YesNo], [0|ZeroOne]) :-
+	transform_yesno_to_zeroone(YesNo, ZeroOne).
+transform_yesno_to_zeroone([yes|YesNo], [1|ZeroOne]) :-
+	transform_yesno_to_zeroone(YesNo, ZeroOne).
 
 validate_shelf_types(_, [], []).
 validate_shelf_types(KB, [Place|Places], [Place|Shelves]) :-
@@ -1236,10 +1255,75 @@ get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShe
 	Y is X + 1,
 	get_visited_property_from_shelves(KB, Shelves, Y, ObsShelves).
 
-%Saca lista de de lugares en el mundo
-%Forma una lista con aquellos que tengan type=>shelf
-%
+%****************************************************************
+%---------------------------------------------------------------*
+%----------------------Robot Actions----------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
 
+%These functions define how the robot interacts with the world.
+
+%------------------------------------
+% High-Level Actions
+%------------------------------------
+
+%robot_get_order
+%robot_diagnose
+%robot_make_decision
+%robot_make_plan
+%robot_execute_plan
+
+%------------------------------------
+% Low-Level Actions
+%------------------------------------
+
+
+%robot_move(LocationID, Result)
+% Input: A location
+% Output: A result (success/fail)
+% Description: Attempt to move from the robot's current position to the LocationID.
+% If successful: Update the robot's current position in the KB (the new property will be positionID => LocationID).
+% Fails if: Mechanical failure (the robot couldn't get to the location -> determined in the simulation by the robot's property probMove)
+
+
+%robot_search(ItemID, Result)
+% Input: An item
+% Output: A result (success/fail)
+% Description: Attempt to search an item at the robot's current position.
+% If successful: Update the item's current observedLoc to the robot's current position (observedLoc => robotPosition).
+% Fails if: Mechanical failure (the robot couldn't see the item -> determined in the simulation by the item's property probSeen)
+
+
+%robot_pick(ItemID, Result)
+% Input: An item
+% Output: A result (success/fail)
+% Attempt to pick an item at the robot's current position. Update KB if the attempt was successful.
+% If successful: Update the item's current observedLoc and realLoc to the robot's hand (observedLoc => robotHand, realLoc => robotHand). Update one of the empty robot's hands to ItemID.
+% Fails if: Mechanical failure (the robot couldn't pick the item -> determined in the simulation by the item's property probPicked)
+
+
+
+%robot_place(ItemID, Result)
+% Input: An item
+% Output: A result (success/fail)
+% Attempt to place an item at the robot's current position. Update KB if the attempt was successful.
+% If successful: Update the item's current observedLoc and realLoc to the robot's current position (observedLoc => robotPosition, realLoc => robotPosition). Update the robot hand's in which the ItemID was placed to empty.
+% Fails if: Mechanical failure (the robot couldn't place the item -> determined in the simulation by the item's property probPlaced.
+
+
+%robot_observe(Result)				
+% Input: A location.
+% Output: A result (success/fail).
+% Description: Attempt to see every item that has property realLoc => robotPosition, i.e. perform a robot_search over those items. 
+% If successful: Do not update anything in the KB (all the calls to robot_search will take care of that).
+% Fails if: This action can fail either by a mechanical failure (one of the searches failed), or if any of the seen item's diagnosedLoc != observedLocation.
+
+
+%****************************************************************
+%---------------------------------------------------------------*
+%----------------------Other Functions--------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
 
 %------------------------------------
 % Auxiliary functions for working with lists
@@ -1276,6 +1360,12 @@ are_sublists([X|T], List) :-
 	sublist(X, List),
 	are_sublists(T, List),
 	!.
+
+%****************************************************************
+%---------------------------------------------------------------*
+%---------------------Diagnostic Module-------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
 
 %-----------------------------------
 % Utilities for choosing a diagnostic
