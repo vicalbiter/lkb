@@ -18,11 +18,19 @@ Propiedades de objetos:
 	observedLoc => shelfName/nowhere	posición observada del item en los estantes
 	diagnosedLoc => shelfName/nowhere	posición diagnosticada del item en los estantes
 	isPlaced => yes/no			dice si el item fue colocado o no por el asistente del supermercado (inicialmente, sólo los items que el asistente reportó deberían tener isPlaced=>yes)
+	probSeen => 0-1				probabilidad de ser visto correctamente
+	probPicked => 0-1			probabilidad de ser agarrado correctamente
+	probPlaced => 0-1			probabilidad de ser colocado correctamente
 
 Clase: robot
 Descripción: Todos los robots del mundo (nada más trabajaremos con uno)
 Propiedades de objetos:
-	Por definir
+	position => positionID (0/1/2...)	0 = posición del cliente, 1..n =posiciones de los estantes
+	decisionList => [Lista de decisiones]
+	plan => [Lista de acciones]
+	hands => [Item1/nothing, Item2/nothing]
+	probMove => 0-1				probabilidad de moverse correctamente
+
 
 
 

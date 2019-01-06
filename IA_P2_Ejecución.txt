@@ -1,0 +1,79 @@
+****************************************
+INICIALIZACIÓN de la KB:
+
+	-Meter todos los items que existan en el mundo
+		-Inicializar la propiedad idealLoc con la información del mundo ideal
+		-Inicializar la propiedad observedLoc a "nowhere"
+		-Inicializar la propiedad diagnosedLoc a "nowhere"
+		-Inicializar la propiedad isPlaced para todos los items
+			-isPlaced=>yes para los que se hayan colocado, según el asistente
+			-isPlaced=>no para los que no
+		-Inicializar posiciones 
+	-Meter todos los estantes que existan en el mundo (+ uno extra, llamado "nowhere" con id=>0)
+		-Inicializar la propiedad visited=>no
+		-Inicializar la propiedad id (corresponde al número de estante)
+		-Inicializar posiciones
+
+	-Meter un objeto extra que contenga información general?
+		-Número total de estantes en el mundo
+		-Estantes visitados???
+
+EJECUCIÓN:
+
+*****Acción: Observar(X)*****
+Después de realizar una observación de estante X:
+	-Actualizar la propiedad del estante visited=>no, a visited=>yes
+	-Actualizar propiedad observedLoc=>X para todos los items observados en este estante
+	-Si un ítem del estante tiene propiedad isPlaced => no, actualizar a isPlaced => yes.
+	-Si ya se observaron todos los estantes
+		-Para todos los objetos del mundo con la propiedad observedLoc => none, y la propiedad isPlaced => yes, actualizar isPlaced=>no.
+
+
+*****Acción: Diagnosticar*****
+Después de hacer un diagnóstico:
+	-Actualizar la propiedad diagnosedLoc=>X
+
+*****Acción: Decidir******
+	-Actualizar la lista de decisiones pendientes en la KB
+
+*****Acción: Planear******
+	-Actualizar el plan en la KB
+
+
+*****Acción: Mover*****
+*****Acción: Buscar*****
+*****Acción: Agarrar*****
+*****Acción: Colocar*****
+
+
+
+
+1.- robot_get_order -> Arroja una/varias meta(s) del tipo bring(stuff) a la lista de decisiones decisionList
+2.- robot_diagnose -> Arroja un diagnóstico (cambia las propiedades diagnosedLoc para cada item reportado por el asistente)
+3.- robot_make_decision -> Arroja lista de decisión (sobreescribe "decisionList")
+4.- robot_make_plan -> Arroja un plan (sobreescribe propiedad "plan")
+
+
+Loop de simulación
+robot_get_order
+robot_diagnose
+robot_make_plan
+	WHILE(plan is not empty)
+		action = plan.pop()
+		result = robot_attempt(action)
+		if (result == fail)
+			robot_diagnose
+			robot_make_decision
+			robot_make_plan
+
+
+
+****************************************************************
+
+
+	
+
+
+
+
+
