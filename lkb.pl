@@ -1236,7 +1236,7 @@ validate_placed_items(KB, [_|Items], PlacedItems) :-
 get_list_of_visited_shelves(KB, ObservedShelves) :-
 	get_class_extension(world, KB, Places),
 	validate_shelf_types(KB, Places, Shelves),
-	get_visited_property_from_shelves(KB, Shelves, 1, ShelvesYesNo),
+	get_visited_property_from_shelves(KB, Shelves, Shelves, 1, ShelvesYesNo),
 	transform_yesno_to_zeroone(ShelvesYesNo, ObservedShelves),
 	!.
 
@@ -1255,13 +1255,29 @@ validate_shelf_types(KB, [Place|Places], [Place|Shelves]) :-
 validate_shelf_types(KB, [_|Places], Shelves) :-
 	validate_shelf_types(KB, Places, Shelves).
 
-get_visited_property_from_shelves(_, [], _, []).
-get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShelves]) :-
+%get_visited_property_from_shelves(_, [], _, []).
+%get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShelves]) :-
+%	get_explicit_object_properties(Shelf, KB, ShelfProperties),
+%	get_property_from_list(id, ShelfProperties, X),
+%	get_property_from_list(visited, ShelfProperties, ObservedStatus),
+%	Y is X + 1,
+%	get_visited_property_from_shelves(KB, Shelves, Y, ObsShelves).
+
+
+%%%
+get_visited_property_from_shelves(_, [], _, _, []).
+get_visited_property_from_shelves(KB, [_|Shelves], TestShelves, X, [Visited|VisitedShelves]) :-
+	test_vp(KB, TestShelves, 1, Visited),
+	Y is X + 1,
+	get_visited_property_from_shelves(KB, Shelves, TestShelves, Y, VisitedShelves).
+
+test_vp(KB, [_|Shelves], X, Visited) :-
+	Y is X + 1,
+	test_vp(KB, Shelves, Y, Visited).
+test_vp(KB, [Shelf|_], X, Visited) :-
 	get_explicit_object_properties(Shelf, KB, ShelfProperties),
 	get_property_from_list(id, ShelfProperties, X),
-	get_property_from_list(visited, ShelfProperties, ObservedStatus),
-	Y is X + 1,
-	get_visited_property_from_shelves(KB, Shelves, Y, ObsShelves).
+	get_property_from_list(visited, ShelfProperties, Visited).
 
 % Get the contents of the shelf with the property id=>ShelfID
 get_items_in_shelf(ShelfID, ShelfID, [Shelf|_], Shelf).
@@ -1293,9 +1309,23 @@ robot_diagnose(KB, Diagnostic, NewKB) :-
 	update_diagnosed_location(KB, 1, 3, DiagnosticGF, NewKB).
 
 update_diagnosed_location(KB, ShelfID, Y, [Shelf|DiagnosticGF], NewKB) :-
-	get_class_extension(KB, world, Places).
+	get_class_extension(KB, world, Places),
+	validate_shelf_types(KB, Places, Shelves).
 	
-	
+% We have a list of shelves with a containment of items
+% Given an id, get the label of the shelf with that id
+get_name_of_shelf(KB, ID, ShelfName) :-
+	get_class_extension(world, KB, Places),
+	validate_shelf_types(KB, Places, Shelves),
+	get_name_of_shelf_with_id(KB, ID, Shelves, ShelfName),
+	!.
+
+get_name_of_shelf_with_id(_, _, [], []).
+get_name_of_shelf_with_id(KB, ID, [Shelf|_], Shelf) :-
+	get_explicit_object_properties(Shelf, KB, ShelfProperties),
+	get_property_from_list(id, ShelfProperties, ID).	
+get_name_of_shelf_with_id(KB, ID, [_|Shelves], Shelf) :-
+	get_name_of_shelf_with_id(KB, ID, Shelves, Shelf).
 
 %robot_make_decision(¿?) -> Builds a decision list, updates KB (decisionList)
 %robot_make_plan(¿?) -> Builds a plan, updates KB (plan)
