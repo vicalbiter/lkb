@@ -1306,11 +1306,21 @@ robot_diagnose(KB, Diagnostic, NewKB) :-
 	get_list_of_visited_shelves(KB, ObsShelves),
 	diagnostic(Items, 3, IdealGF, ObsGF, ObsShelves, Diagnostic),
 	transformation_df_to_gf(Diagnostic, DiagnosticGF),
-	update_diagnosed_location(KB, 1, 3, DiagnosticGF, NewKB).
+	update_diagnosed_location(KB, 1, 3, DiagnosticGF, NewKB),
+	!.
 
-update_diagnosed_location(KB, ShelfID, Y, [Shelf|DiagnosticGF], NewKB) :-
-	get_class_extension(KB, world, Places),
-	validate_shelf_types(KB, Places, Shelves).
+update_diagnosed_location(KB, _, _, [], KB).
+update_diagnosed_location(KB, ShelfID, Y, [ShelfContents|DiagnosticGF], NewKB) :-
+	get_name_of_shelf(KB, ShelfID, ShelfName),
+	update_diagnosed_location_for_items_in_shelf(KB, ShelfContents, ShelfName, AuxKB),
+	NextShelfID is ShelfID + 1,
+	update_diagnosed_location(AuxKB, NextShelfID, Y, DiagnosticGF, NewKB).
+
+update_diagnosed_location_for_items_in_shelf(KB, [], _, KB).
+update_diagnosed_location_for_items_in_shelf(KB, [Item|ShelfContents], ShelfName, NewKB) :-
+	change_property_of_object(diagnosedLoc=>_, diagnosedLoc=>ShelfName, Item, KB, AuxKB),
+	update_diagnosed_location_for_items_in_shelf(AuxKB, ShelfContents, ShelfName, NewKB).
+
 	
 % We have a list of shelves with a containment of items
 % Given an id, get the label of the shelf with that id
