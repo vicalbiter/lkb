@@ -1264,7 +1264,6 @@ get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShe
 	get_visited_property_from_shelves(KB, Shelves, Y, ObsShelves).
 
 % Get the contents of the shelf with the property id=>ShelfID
-get_items_in_shelf(_, _, [], []).
 get_items_in_shelf(ShelfID, ShelfID, [Shelf|_], Shelf).
 get_items_in_shelf(X, ShelfID, [_|ItemsGF], Shelf) :-	
 	Y is X + 1,	
@@ -1284,6 +1283,20 @@ get_items_in_shelf(X, ShelfID, [_|ItemsGF], Shelf) :-
 
 %robot_get_order(Goal) -> Gets the client order
 %robot_diagnose(KB, Diagnostic) -> Builds a diagnostic, updates KB (diagnosedLoc for every item)
+robot_diagnose(KB, Diagnostic, NewKB) :-
+	get_list_of_placed_items(KB, Items),
+	get_ideal_locations_gf(KB, 3, IdealGF),
+	get_observed_locations_gf(KB, 3, ObsGF),
+	get_list_of_visited_shelves(KB, ObsShelves),
+	diagnostic(Items, 3, IdealGF, ObsGF, ObsShelves, Diagnostic),
+	transformation_df_to_gf(Diagnostic, DiagnosticGF),
+	update_diagnosed_location(KB, 1, 3, DiagnosticGF, NewKB).
+
+update_diagnosed_location(KB, ShelfID, Y, [Shelf|DiagnosticGF], NewKB) :-
+	get_class_extension(KB, world, Places).
+	
+	
+
 %robot_make_decision(¿?) -> Builds a decision list, updates KB (decisionList)
 %robot_make_plan(¿?) -> Builds a plan, updates KB (plan)
 %robot_execute_plan -> TBD
@@ -1316,40 +1329,64 @@ robot_attempt_move(KB, _, failure, KB) :-
 	writeln('Robot failed while performing a move action').
 
 
-%robot_observe(KB, Result)				
+%robot_search(KB, Result, NewKB)				
 % Input: A location.
-% Output: A result (success/fail).
-% Description: Attempt to see every item that has property realLoc => robotPosition, i.e. perform a robot_search over those items. 
-% If successful: Do not update anything in the KB (all the calls to robot_search will take care of that).
+% Output: A result (success/failure).
+% Description: Attempt to see every item that has property realLoc => robotPosition, i.e. perform a robot_search_one_item over those items. 
+% If successful: Update the current location "visited" property to visited=>yes
+% If unsusccesful: Same as if succesful, plus update the "isPlaced" property of the items at the current location to isPlaced=>yes
 % Fails if: This action can fail either by a mechanical failure (one of the searches failed), or if, after finishing all the searches, any of the seen item's diagnosedLoc != observedLocation.
-robot_observe(KB, Result, NewKB) :-
+robot_search(KB, success, NewKB) :-
 	get_explicit_object_properties(robbie, KB, RobotProperties),
-	get_property_from_list(positionLabel, RobotProperties, RobotPosition),
+	get_property_from_list(positionLabel, RobotProperties, RobotPosition), 
 	get_explicit_object_properties(RobotPosition, KB, PosProperties),
-	get_property_from_list(id, PosProperties, RobotPositionID),
-	get_real_locations_gf(KB, 3, RealLocations),
-	get_items_in_shelf(1, RobotPositionID, RealLocations, ItemsInShelf).
-%	robot_search_all_items(KB, ItemsInShelf, ResultList, AuxKB),
-%	validate_results(ResultList, Result),
-%	update_placed_items_and_visited_shelves(AuxKB, Result, NewKB).
+	get_property_from_list(id, PosProperties, RobotPositionID),	%Get Robot Position
+	get_real_locations_gf(KB, 3, RealLocations),			%Get real contents	
+	get_items_in_shelf(1, RobotPositionID, RealLocations, RealItemsInShelf),
+	get_diagnosed_locations_gf(KB, 3, DiagnosedLocations),		%Get diagnosed contents
+	get_items_in_shelf(1, RobotPositionID, DiagnosedLocations, DiagnosedItemsInShelf),
+	lists_are_equal(RealItemsInShelf, DiagnosedItemsInShelf),	%Compare diagnosed/real contents
+	robot_search_all_items(KB, RealItemsInShelf, AuxKB),
+	change_property_of_object(visited=>_, visited=>yes, RobotPosition, AuxKB, NewKB),
+	writeln('Robot did not find any inconsistencies with its beliefs').
 
-%There are three possibilities
-%1.- The robot looked at the shelf, 
+robot_search(KB, failure, NewKB) :-
+	get_explicit_object_properties(robbie, KB, RobotProperties),
+	get_property_from_list(positionLabel, RobotProperties, RobotPosition), 
+	get_explicit_object_properties(RobotPosition, KB, PosProperties),
+	get_property_from_list(id, PosProperties, RobotPositionID),	%Get Robot Position
+	get_real_locations_gf(KB, 3, RealLocations),			%Get real contents	
+	get_items_in_shelf(1, RobotPositionID, RealLocations, RealItemsInShelf),
+	get_diagnosed_locations_gf(KB, 3, DiagnosedLocations),		%Get diagnosed contents
+	get_items_in_shelf(1, RobotPositionID, DiagnosedLocations, DiagnosedItemsInShelf),
+	not(lists_are_equal(RealItemsInShelf, DiagnosedItemsInShelf)),	%Compare diagnosed/real contents
+	robot_search_all_items(KB, RealItemsInShelf, Aux1KB),	
+	change_property_of_object(visited=>_, visited=>yes, RobotPosition, Aux1KB, Aux2KB),
+	update_placed_items(Aux2KB, RealItemsInShelf, NewKB), 
+	writeln('Robot found inconsistencies with its beliefs').
 
-%Hay varias posibilidades
-%1.- Todos los searches de los items fueron hechos, y todos los ítems fueron encontrados.
-%2.- Todos los searches de los items fueron hechos, pero no todos los ítems fueron encontrados.
-%3.- No todos los searches de los actions fueron hechos (i.e. hubo fallas mecánicas)
-% En la ejecución, este paso debería repetirse hasta que sólo se tenga el caso 1 ó 2.
+update_placed_items(KB, [], KB).
+update_placed_items(KB, [Item|Items], NewKB) :-
+	change_property_of_object(isPlaced=>_, isPlaced=>yes, Item, KB, AuxKB),
+	update_placed_items(AuxKB, Items, NewKB).
+
+robot_search_all_items(KB, [], KB).
+robot_search_all_items(KB, [Item|Items], NewKB) :-
+	robot_search_one_item(KB, Item, _, AuxKB),
+	robot_search_all_items(AuxKB, Items, NewKB).
+
+%Success Criteria #1 .- The ItemID was observed in this shelf. 
+%Success Criteria #2 .- The items observed in the shelf correspond to the robot's diagnosis.
+%Criteria #1 is contained in Criteria #2, as, by definition, if the robot came to this shelf to search for an item, it believes (diagnosed) that the item is in this shelf.
 
 
-%robot_search(KB, ItemID, Result, NewKB)
+%robot_search_one_item(KB, ItemID, Result, NewKB)
 % Input: An item
 % Output: A result (success/failure)
 % Description: Attempt to search an item at the robot's current position.
 % If successful: Update the item's current observedLoc to the robot's current position (observedLoc => robotPosition).
 % Fails if: Mechanical failure (the robot couldn't see the item -> determined in the simulation by the item's property probSeen), or placement failure (the search was made successfully but the item was not in the shelf).
-robot_search(KB, ItemID, Result, NewKB) :-
+robot_search_one_item(KB, ItemID, Result, NewKB) :-
 	get_explicit_object_properties(robbie, KB, RobotProperties),
 	get_property_from_list(positionLabel, RobotProperties, RobotPosition),
 	get_explicit_object_properties(ItemID, KB, ItemProperties),
@@ -1369,8 +1406,8 @@ robot_attempt_search(KB, ItemID, RobotPosition, RobotPosition, success, success,
 	%writeln('The item was found').
 
 %Case 2.- The search action was performed successfully, but the item is not here
-robot_attempt_search(KB, _, _, _, success, failure, KB) :-	
-	writeln('The item was not found').
+robot_attempt_search(KB, _, _, _, success, failure, KB).	
+	%writeln('The item was not found').
 
 %Case 2.- The search action couldn't be performed
 robot_attempt_search(KB, ItemID, _, _, failure, failure, KB) :-
@@ -1469,7 +1506,7 @@ robot_attempt(SuccessProbability, RandomNumber, failure) :-
 
 %****************************************************************
 %---------------------------------------------------------------*
-%-------------------------Execution-----------------------------*
+%-------------------------Simulation----------------------------*
 %---------------------------------------------------------------*
 %****************************************************************
 
