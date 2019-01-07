@@ -1188,6 +1188,14 @@ get_diagnosed_locations_gf(KB, NShelves, DiagnosedGF) :-
 	place_items_in_shelves(AllItems, 1, NShelves, ItemPlacement, DiagnosedGF),
 	!.
 
+% Get list of the real locations of the items in GF
+get_real_locations_gf(KB, NShelves, DiagnosedGF) :-
+	get_class_extension(items, KB, AllItems),
+	get_shelves_placement(KB, AllItems, realLoc, ItemPlacement),
+%	get_number_of_shelves(Shelves, NShelves),
+	place_items_in_shelves(AllItems, 1, NShelves, ItemPlacement, DiagnosedGF),
+	!.
+
 
 % Get the ideal/observed/diagnosed shelf an item according to a "Property" parameter (this parameter can be idealLoc, observedLoc or diagnosedLoc
 get_shelves_placement(_, [], _, []).
@@ -1255,6 +1263,13 @@ get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShe
 	Y is X + 1,
 	get_visited_property_from_shelves(KB, Shelves, Y, ObsShelves).
 
+% Get the contents of the shelf with the property id=>ShelfID
+get_items_in_shelf(_, _, [], []).
+get_items_in_shelf(ShelfID, ShelfID, [Shelf|_], Shelf).
+get_items_in_shelf(X, ShelfID, [_|ItemsGF], Shelf) :-	
+	Y is X + 1,	
+	get_items_in_shelf(Y, ShelfID, ItemsGF, Shelf).
+
 %****************************************************************
 %---------------------------------------------------------------*
 %----------------------Robot Actions----------------------------*
@@ -1267,56 +1282,199 @@ get_visited_property_from_shelves(KB, [Shelf|Shelves], X, [ObservedStatus|ObsShe
 % High-Level Actions
 %------------------------------------
 
-%robot_get_order
-%robot_diagnose
-%robot_make_decision
-%robot_make_plan
-%robot_execute_plan
+%robot_get_order(Goal) -> Gets the client order
+%robot_diagnose(KB, Diagnostic) -> Builds a diagnostic, updates KB (diagnosedLoc for every item)
+%robot_make_decision(¿?) -> Builds a decision list, updates KB (decisionList)
+%robot_make_plan(¿?) -> Builds a plan, updates KB (plan)
+%robot_execute_plan -> TBD
 
 %------------------------------------
 % Low-Level Actions
 %------------------------------------
 
 
-%robot_move(LocationID, Result)
-% Input: A location
-% Output: A result (success/fail)
+%robot_move(KB, LocationID, Result, NewKB)
+% Input: KB, a location label
+% Output: A result (success/failure)
 % Description: Attempt to move from the robot's current position to the LocationID.
 % If successful: Update the robot's current position in the KB (the new property will be positionID => LocationID).
 % Fails if: Mechanical failure (the robot couldn't get to the location -> determined in the simulation by the robot's property probMove)
+robot_move(KB, LocationID, Result, NewKB) :-
+	get_explicit_object_properties(robbie, KB, RobotProperties),
+	get_property_from_list(probMove, RobotProperties, ProbMove),
+	%validate_existing_location?	
+	random(RNG),	
+	robot_attempt(ProbMove, RNG, Result),
+	robot_attempt_move(KB, LocationID, Result, NewKB),
+	!.
+
+robot_attempt_move(KB, LocationID, success, NewKB) :-
+	change_property_of_object(positionLabel=>_, positionLabel=>LocationID, robbie, KB, NewKB), 
+	atom_concat('Robot moved successfully to ', LocationID, Message),
+	writeln(Message).
+robot_attempt_move(KB, _, failure, KB) :-
+	writeln('Robot failed while performing a move action').
 
 
-%robot_search(ItemID, Result)
-% Input: An item
-% Output: A result (success/fail)
-% Description: Attempt to search an item at the robot's current position.
-% If successful: Update the item's current observedLoc to the robot's current position (observedLoc => robotPosition).
-% Fails if: Mechanical failure (the robot couldn't see the item -> determined in the simulation by the item's property probSeen)
-
-
-%robot_pick(ItemID, Result)
-% Input: An item
-% Output: A result (success/fail)
-% Attempt to pick an item at the robot's current position. Update KB if the attempt was successful.
-% If successful: Update the item's current observedLoc and realLoc to the robot's hand (observedLoc => robotHand, realLoc => robotHand). Update one of the empty robot's hands to ItemID.
-% Fails if: Mechanical failure (the robot couldn't pick the item -> determined in the simulation by the item's property probPicked)
-
-
-
-%robot_place(ItemID, Result)
-% Input: An item
-% Output: A result (success/fail)
-% Attempt to place an item at the robot's current position. Update KB if the attempt was successful.
-% If successful: Update the item's current observedLoc and realLoc to the robot's current position (observedLoc => robotPosition, realLoc => robotPosition). Update the robot hand's in which the ItemID was placed to empty.
-% Fails if: Mechanical failure (the robot couldn't place the item -> determined in the simulation by the item's property probPlaced.
-
-
-%robot_observe(Result)				
+%robot_observe(KB, Result)				
 % Input: A location.
 % Output: A result (success/fail).
 % Description: Attempt to see every item that has property realLoc => robotPosition, i.e. perform a robot_search over those items. 
 % If successful: Do not update anything in the KB (all the calls to robot_search will take care of that).
-% Fails if: This action can fail either by a mechanical failure (one of the searches failed), or if any of the seen item's diagnosedLoc != observedLocation.
+% Fails if: This action can fail either by a mechanical failure (one of the searches failed), or if, after finishing all the searches, any of the seen item's diagnosedLoc != observedLocation.
+robot_observe(KB, Result, NewKB) :-
+	get_explicit_object_properties(robbie, KB, RobotProperties),
+	get_property_from_list(positionLabel, RobotProperties, RobotPosition),
+	get_explicit_object_properties(RobotPosition, KB, PosProperties),
+	get_property_from_list(id, PosProperties, RobotPositionID),
+	get_real_locations_gf(KB, 3, RealLocations),
+	get_items_in_shelf(1, RobotPositionID, RealLocations, ItemsInShelf).
+%	robot_search_all_items(KB, ItemsInShelf, ResultList, AuxKB),
+%	validate_results(ResultList, Result),
+%	update_placed_items_and_visited_shelves(AuxKB, Result, NewKB).
+
+%There are three possibilities
+%1.- The robot looked at the shelf, 
+
+%Hay varias posibilidades
+%1.- Todos los searches de los items fueron hechos, y todos los ítems fueron encontrados.
+%2.- Todos los searches de los items fueron hechos, pero no todos los ítems fueron encontrados.
+%3.- No todos los searches de los actions fueron hechos (i.e. hubo fallas mecánicas)
+% En la ejecución, este paso debería repetirse hasta que sólo se tenga el caso 1 ó 2.
+
+
+%robot_search(KB, ItemID, Result, NewKB)
+% Input: An item
+% Output: A result (success/failure)
+% Description: Attempt to search an item at the robot's current position.
+% If successful: Update the item's current observedLoc to the robot's current position (observedLoc => robotPosition).
+% Fails if: Mechanical failure (the robot couldn't see the item -> determined in the simulation by the item's property probSeen), or placement failure (the search was made successfully but the item was not in the shelf).
+robot_search(KB, ItemID, Result, NewKB) :-
+	get_explicit_object_properties(robbie, KB, RobotProperties),
+	get_property_from_list(positionLabel, RobotProperties, RobotPosition),
+	get_explicit_object_properties(ItemID, KB, ItemProperties),
+	get_property_from_list(realLoc, ItemProperties, ItemLocation),
+	get_property_from_list(probSeen, ItemProperties, ProbSeen),
+	random(RNG),
+	robot_attempt(ProbSeen, RNG, ResultPrelim),
+	robot_attempt_search(KB, ItemID, RobotPosition, ItemLocation, ResultPrelim, Result, NewKB),
+	!.
+
+%Case 1.- The search action was performed successfully, and the item is in the robot's current position.
+robot_attempt_search(KB, ItemID, RobotPosition, RobotPosition, success, success, NewKB) :-
+	change_property_of_object(observedLoc=>_, observedLoc=>RobotPosition, ItemID, KB, NewKB),
+	atom_concat('The ', ItemID, Mes1),
+	atom_concat(Mes1, ' was found', Message),
+	writeln(Message).
+	%writeln('The item was found').
+
+%Case 2.- The search action was performed successfully, but the item is not here
+robot_attempt_search(KB, _, _, _, success, failure, KB) :-	
+	writeln('The item was not found').
+
+%Case 2.- The search action couldn't be performed
+robot_attempt_search(KB, ItemID, _, _, failure, failure, KB) :-
+	atom_concat('Robot is not sure if the ', ItemID, Mes1),
+	atom_concat(Mes1, ' is in the current location', Message),
+	writeln(Message).
+%	writeln('Robot is not sure if the item is in the current location').
+
+
+%robot_pick(KB, ItemID, Result, NewKB)
+% Input: An item
+% Output: A result (success/failure)
+% Attempt to pick an item at the robot's current position. Update KB if the attempt was successful.
+% If successful: Update the item's current observedLoc and realLoc to the robot's hand (observedLoc => robotHand, realLoc => robotHand). Update one of the empty robot's hands to ItemID.
+% Fails if: Mechanical failure (the robot couldn't pick the item -> determined in the simulation by the item's property probPicked)
+robot_pick(KB, ItemID, Result, NewKB) :-
+	get_explicit_object_properties(ItemID, KB, ItemProperties),
+	get_property_from_list(probPicked, ItemProperties, ProbPicked),
+	%validate_item_is_at_robot_position?
+	random(RNG),
+	robot_attempt(ProbPicked, RNG, Result),
+	robot_attempt_pick(KB, ItemID, Result, NewKB),
+	!.
+
+robot_attempt_pick(KB, ItemID, success, NewKB) :-
+	change_property_of_object(realLoc=>_,realLoc=>robot, ItemID, KB, Aux1KB),
+	change_property_of_object(observedLoc=>_,observedLoc=>robot, ItemID, Aux1KB, Aux2KB),
+	get_explicit_object_properties(robbie, Aux2KB, RobotProperties),
+	get_property_from_list(hands, RobotProperties, Hands),
+	place_item_in_robot_hands(ItemID, Hands, NewHands),
+	change_property_of_object(hands=>_, hands=>NewHands, robbie, Aux2KB, NewKB), 
+	atom_concat('The ', ItemID, Mes1),
+	atom_concat(Mes1, ' was picked up by the robot', Message),
+	writeln(Message).
+	%writeln('The item was picked up by the robot').
+
+robot_attempt_pick(KB, ItemID, failure, KB) :-
+	atom_concat('The ', ItemID, Mes1),
+	atom_concat(Mes1, ' could not be picked up', Message),
+	writeln(Message).
+	%writeln('The item could not be picked up').
+
+place_item_in_robot_hands(Item, [empty, empty], [Item, empty]).
+place_item_in_robot_hands(Item, [X, empty], [X, Item]).
+
+
+%robot_place(KB, ItemID, Result, NewKB)
+% Input: An item
+% Output: A result (success/failure)
+% Attempt to place an item in the robot's hands at the robot's current position. Update KB if the attempt was successful.
+% If successful: Update the item's current observedLoc and realLoc to the robot's current position (observedLoc => robotPosition, realLoc => robotPosition). Update the robot hand's in which the ItemID was placed to empty.
+% Fails if: Mechanical failure (the robot couldn't place the item -> determined in the simulation by the item's property probPlaced.
+robot_place(KB, ItemID, Result, NewKB) :-
+	get_explicit_object_properties(ItemID, KB, ItemProperties),
+	get_property_from_list(probPlaced, ItemProperties, ProbPlaced),
+	%validate_item_is_in_robot_hands?
+	random(RNG),
+	robot_attempt(ProbPlaced, RNG, Result),
+	robot_attempt_place(KB, ItemID, Result, NewKB),
+	!.
+
+robot_attempt_place(KB, ItemID, success, NewKB) :-
+	get_explicit_object_properties(robbie, KB, RobotProperties),
+	get_property_from_list(positionLabel, RobotProperties, RobotPosition),
+	change_property_of_object(realLoc=>_, realLoc=>RobotPosition, ItemID, KB, Aux1KB),
+	change_property_of_object(observedLoc=>_, observedLoc=>RobotPosition, ItemID, Aux1KB, Aux2KB),
+	get_property_from_list(hands, RobotProperties, Hands),
+	remove_item_from_robot_hands(ItemID, Hands, NewHands),
+	change_property_of_object(hands=>_, hands=>NewHands, robbie, Aux2KB, NewKB),
+	atom_concat('The ', ItemID, Mes1),
+	atom_concat(Mes1, ' was placed successfully', Message),
+	writeln(Message).
+
+robot_attempt_place(KB, ItemID, failure, KB) :-
+	atom_concat('The ', ItemID, Mes1),
+	atom_concat(Mes1, ' could not be placed', Message),
+	writeln(Message). 
+
+remove_item_from_robot_hands(Item, [Item, X], [empty, X]).
+remove_item_from_robot_hands(Item, [X, Item], [X, empty]).
+
+
+	
+
+%------------------------------------
+% Auxiliary functions
+%------------------------------------
+
+% Attempt to perform an action with a certain probability of success. If the random number generator generates a number less than the SuccessProbability, the robot performs the action successfully.
+robot_attempt(SuccessProbability, RandomNumber, success) :-
+	RandomNumber < SuccessProbability.
+robot_attempt(SuccessProbability, RandomNumber, failure) :-
+	RandomNumber >= SuccessProbability.
+	
+
+
+%****************************************************************
+%---------------------------------------------------------------*
+%-------------------------Execution-----------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
+
+%robot_get_order(Goal)
+%robot_diagnose(KB, 
 
 
 %****************************************************************
