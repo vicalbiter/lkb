@@ -1604,6 +1604,15 @@ robot_attempt(SuccessProbability, RandomNumber, failure) :-
 %---------------------------------------------------------------*
 %****************************************************************
 
+% Begins the simulation. The only input is the KB.
+robot_start_simulation(KB, NewKB) :-
+	display("Hey, my name is Robbie and I will be serving you today, what can I get you?"),
+	nl,
+	read(Item),
+	nl,
+	change_property_of_object(isRequested=>_, isRequested=>yes, Item, KB, AuxKB),
+	robot_simulation(AuxKB, NewKB).
+
 %Given a goal in the KB, simulate the robot behavior
 robot_simulation(KB, NewKB) :-
 	writeln("Robot begins its inference cycle:"),
@@ -2059,7 +2068,7 @@ get_requested_items(KB, [_|Items], RequestedItems) :-
 % MAIN ROUTINES
 
 %--------------------------------------------------------------------
-% Naïve, almost surely no optimal, plan
+% DFS, almost surely no optimal, plan
 % dfs_soln(Decision,Diagnosis,Ideal,CurrentLocation,Plan)
 %---------------------------------------------------------------------
 dfs_soln([],_,_,_,[]).
