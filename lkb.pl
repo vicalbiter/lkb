@@ -1315,37 +1315,73 @@ get_name_of_shelf_with_id(KB, ID, [_|Shelves], Shelf) :-
 %------------------------------------
 
 %robot_get_order(Goal) -> Gets the client order
-%robot_diagnose(KB, Diagnostic) -> Builds a diagnostic, updates KB (diagnosedLoc for every item)
-robot_diagnose(KB, Diagnostic, NewKB) :-
+%robot_diagnose(KB, Diagnosis, NewKB) -> Builds a diagnosis, updates KB (diagnosedLoc for every item)
+robot_diagnose(KB, Diagnosis, NewKB) :-
 	get_list_of_placed_items(KB, Items),
 	get_ideal_locations_gf(KB, 3, IdealGF),
 	get_observed_locations_gf(KB, 3, ObsGF),
 	get_list_of_visited_shelves(KB, ObsShelves),
-	diagnostic(Items, 3, IdealGF, ObsGF, ObsShelves, Diagnostic),
-	transformation_df_to_gf(Diagnostic, DiagnosticGF),
-	update_diagnosed_location(KB, 1, 3, DiagnosticGF, NewKB),
+	diagnosis(Items, 3, IdealGF, ObsGF, ObsShelves, Diagnosis),
+	transformation_df_to_gf(Diagnosis, DiagnosisGF),
+	update_diagnosed_location(KB, 1, 3, DiagnosisGF, NewKB),
+	writeln("Robot's diagnosis: "),
+	writeln(Diagnosis),
 	!.
 
 update_diagnosed_location(KB, _, _, [], KB).
-update_diagnosed_location(KB, ShelfID, Y, [ShelfContents|DiagnosticGF], NewKB) :-
+update_diagnosed_location(KB, ShelfID, Y, [ShelfContents|DiagnosisGF], NewKB) :-
 	get_name_of_shelf(KB, ShelfID, ShelfName),
 	update_diagnosed_location_for_items_in_shelf(KB, ShelfContents, ShelfName, AuxKB),
 	NextShelfID is ShelfID + 1,
-	update_diagnosed_location(AuxKB, NextShelfID, Y, DiagnosticGF, NewKB).
+	update_diagnosed_location(AuxKB, NextShelfID, Y, DiagnosisGF, NewKB).
 
 update_diagnosed_location_for_items_in_shelf(KB, [], _, KB).
 update_diagnosed_location_for_items_in_shelf(KB, [Item|ShelfContents], ShelfName, NewKB) :-
 	change_property_of_object(diagnosedLoc=>_, diagnosedLoc=>ShelfName, Item, KB, AuxKB),
 	update_diagnosed_location_for_items_in_shelf(AuxKB, ShelfContents, ShelfName, NewKB).
 
-%robot_make_decision(¿?) -> Builds a decision list, updates KB (decisionList)
+%robot_make_decision(KB, Diagnosis, Decision, NewKB) -> Builds a decision list, updates KB (decisionList)
+robot_make_decision(KB, Diagnosis, Decision, NewKB) :-
+	decision_making(KB, Diagnosis, Decision),
+	change_property_of_object(decisionList=>_, decisionList=>Decision, robbie, KB, NewKB),
+	writeln("Robot's decision: "),
+	writeln(Decision).
+
 %robot_make_plan(¿?) -> Builds a plan, updates KB (plan)
-%robot_execute_plan -> TBD
+% brute_force_soln(Decision,Diagnosis,Ideal,CurrentLocation,Plan)
+robot_make_plan(KB, Decision, Plan, NewKB) :-
+	get_explicit_object_properties(robbie, KB, RobotProperties),
+	get_property_from_list(positionLabel, RobotProperties, RobotLocation),
+	get_explicit_object_properties(RobotLocation, KB, LocationProperties),
+	get_property_from_list(id, LocationProperties, RLID),
+	patch_transform_id(RLID, RobotLocationID),
+	get_diagnosed_locations_gf(KB, 3, Diagnosis),
+	get_ideal_locations_gf(KB, 3, Ideal),
+	brute_force_soln(Decision, Diagnosis, Ideal, RobotLocationID, Plan),
+	change_property_of_object(plan=>_, plan=>Plan, robbie, KB, NewKB),
+	writeln("Robot's plan: "),
+	writeln(Plan).
+
+patch_transform_id(100, 0).
+patch_transform_id(ID, ID).
+%robot_execute_plan
+robot_simulation(KB, NewKB) :-
+	writeln("Robot begins its inference cycle"),
+	robot_diagnose(KB, Diagnosis, Aux1),
+	robot_make_decision(Aux1, Diagnosis, Decision, Aux2),
+	robot_make_plan(Aux2, Decision, Plan, Aux3),
+	writeln(""),
+	writeln("Robot goes on to perform its plan"),
+	perform_actions(Plan, Aux3, success, NewKB).
 
 perform_actions([], KB, success, KB) :-
 	writeln('Done').
-perform_actions([move(ShelfID)|Actions], KB, success, NewKB) :-
-	call(robot_move(ShelfID), KB, Result, AuxKB),
+perform_actions([move(_,0)|Actions], KB, success, NewKB) :-
+	call(robot_move(initial), KB, Result, AuxKB),
+	perform_actions(Actions, AuxKB, Result, NewKB).
+perform_actions([move(_,ShelfID)|Actions], KB, success, NewKB) :-
+	get_name_of_shelf(KB, ShelfID, ShelfName),
+	call(robot_move(ShelfName), KB, Result, AuxKB),
 	perform_actions(Actions, AuxKB, Result, NewKB).
 perform_actions([search(_)|Actions], KB, success, NewKB) :-
 	call(robot_search(KB), Result, AuxKB),
@@ -1353,13 +1389,18 @@ perform_actions([search(_)|Actions], KB, success, NewKB) :-
 perform_actions([grasp(ItemID)|Actions], KB, success, NewKB) :-
 	call(robot_pick(ItemID), KB, Result, AuxKB),
 	perform_actions(Actions, AuxKB, Result, NewKB).
-perform_actions([place(ItemID)|Actions], KB, success, NewKB) :-
+perform_actions([release(ItemID)|Actions], KB, success, NewKB) :-
 	call(robot_place(ItemID), KB, Result, AuxKB),
 	perform_actions(Actions, AuxKB, Result, NewKB).
 perform_actions(_, KB, failure, NewKB) :-
-	robot_diagnose(KB, Diagnostic, NewKB),
-	writeln('New Diagnostic:'),	
-	writeln(Diagnostic).
+	writeln(""),
+	writeln("Robot begins its inference cycle"),
+	robot_diagnose(KB, Diagnosis, Aux1KB),
+	robot_make_decision(Aux1KB, Diagnosis, Decision, Aux2KB),
+	robot_make_plan(Aux2KB, Decision, Plan, Aux3KB),
+	writeln(""),
+	writeln("Robot goes on to perform its plan"),
+	perform_actions(Plan, Aux3KB, success, NewKB).
 
 %Multiple cases:
 %perform_actions([move(_, PlaceID)|Actions, KB, NewKB)] :- call(robot_move(PlaceID)...
@@ -1623,15 +1664,15 @@ are_sublists([X|T], List) :-
 
 %****************************************************************
 %---------------------------------------------------------------*
-%---------------------Diagnostic Module-------------------------*
+%---------------------Diagnosis Module-------------------------*
 %---------------------------------------------------------------*
 %****************************************************************
 
 %-----------------------------------
-% Utilities for choosing a diagnostic
+% Utilities for choosing a diagnosis
 %-----------------------------------
 
-% Build a list of tuples of the form <Diagnostic, #misplaced_items>
+% Build a list of tuples of the form <Diagnosis, #misplaced_items>
 build_list_of_tuples([], []).
 build_list_of_tuples([L|T1], [[L,Count]|T2]) :-
 	count_placed_items(L, Count),
@@ -1657,12 +1698,12 @@ max_count([[_,Count1],[L2,Count2]|T], Max) :-
 
 % Dilligence Heuristic - Count the number of items that the assistant put into the shelves
 count_placed_items([], 0).
-count_placed_items([misplace(_)|Diagnostic], X) :-
-	count_placed_items(Diagnostic, Y),
+count_placed_items([misplace(_)|Diagnosis], X) :-
+	count_placed_items(Diagnosis, Y),
 	X is Y + 9,
 	!.
-count_placed_items([place(_)|Diagnostic], X) :-
-	count_placed_items(Diagnostic, Y),
+count_placed_items([place(_)|Diagnosis], X) :-
+	count_placed_items(Diagnosis, Y),
 	X is Y + 10,
 	!.
 count_placed_items([_|T], X) :-
@@ -1671,16 +1712,16 @@ count_placed_items([_|T], X) :-
 % Laziness Heuristic
 
 %-----------------------------------
-% Diagnostic form to general form transformation
+% Diagnosis form to general form transformation
 %-----------------------------------
 
-% Transform all the actions inside a diagnostic
+% Transform all the actions inside a diagnosis
 
 transformation_df_to_gf(D, DGF) :-
 	transformation_df_to_nf(D, DNF),
 	transformation_nf_to_gf(DNF, DGF).
 
-% Transform a diagnostic from the form [shelfID1=>[Items], shelfID2=>[Items]...] into the general form [[Objects believed to be in shelf1], [Objects believed to be in shelf2],...]
+% Transform a diagnosis from the form [shelfID1=>[Items], shelfID2=>[Items]...] into the general form [[Objects believed to be in shelf1], [Objects believed to be in shelf2],...]
 transformation_nf_to_gf(D, DGF):-
 	get_shelf1(D, S1),
 	get_shelf2(D, S2),
@@ -1702,7 +1743,7 @@ get_shelf3([shelf3=>X|_], X).
 get_shelf3([_|T], X) :-
 	get_shelf3(T, X).
 
-% Transform a diagnostic of the form [place(X), misplace(Y), move(shelfID)...] into the form [shelfID1=>[Items], shelfID2=>[Items]...]  
+% Transform a diagnosis of the form [place(X), misplace(Y), move(shelfID)...] into the form [shelfID1=>[Items], shelfID2=>[Items]...]  
 transformation_df_to_nf(L, D):-
 	find_all_moves(L, Moves),
 	flatten_action(L, FL),
@@ -1746,7 +1787,7 @@ rightmost(X, L, RM) :-
 
 
 %-----------------------------------
-% General form to diagnostic form transformation
+% General form to diagnosis form transformation
 %-----------------------------------
 transformation_gf_to_df(ListGF, Ideal, ListDF) :-
 	transformation_gf_to_df_all(ListGF, Ideal, 0, Aux1),
@@ -1799,34 +1840,34 @@ clean_obs(L, L).
 
 
 %-------------------------------------
-% Diagnostic generation
+% Diagnosis generation
 %-------------------------------------
 
-% Diagnostic Form: [action1(item1), action2(item2)...actionN(itemN)]
+% Diagnosis Form: [action1(item1), action2(item2)...actionN(itemN)]
 % General Form: [[Items in shelf1], [Items in shelf2], [Items in shelf3]]
 
-% Build a complete diagnostic
-diagnostic(Items, NShelves, Ideal, ObsGF, ObsShelves, Diagnostic) :-
-	findall(D, suggest_diagnostic_df_with_obs(Items, NShelves, Ideal, ObsGF, ObsShelves, D), LD),
+% Build a complete diagnosis
+diagnosis(Items, NShelves, Ideal, ObsGF, ObsShelves, Diagnosis) :-
+	findall(D, suggest_diagnosis_df_with_obs(Items, NShelves, Ideal, ObsGF, ObsShelves, D), LD),
 	build_list_of_tuples(LD, LDH),
-	max_count(LDH, [Diagnostic,_]).
+	max_count(LDH, [Diagnosis,_]).
 
-% Given a list of items, a list of ideal places for those items in GF, a list of observed places for those items in GF, and a list of the shelves that have already been observed, suggest a diagnostic in DF
-suggest_diagnostic_df_with_obs(Items, NShelves, Ideal, ObsGF, ObsShelves, Diagnostic) :-
-	suggest_diagnostic_gf_with_obs(Items, NShelves, ObsGF, ObsShelves, DGF),
-	transformation_gf_to_df(DGF, Ideal, Diagnostic).
+% Given a list of items, a list of ideal places for those items in GF, a list of observed places for those items in GF, and a list of the shelves that have already been observed, suggest a diagnosis in DF
+suggest_diagnosis_df_with_obs(Items, NShelves, Ideal, ObsGF, ObsShelves, Diagnosis) :-
+	suggest_diagnosis_gf_with_obs(Items, NShelves, ObsGF, ObsShelves, DGF),
+	transformation_gf_to_df(DGF, Ideal, Diagnosis).
 
-% Given a list of items, and a list of ideal places for those items in GF, suggest a diagnostic in DF.
-suggest_diagnostic_df(Items, NShelves, Ideal, Diagnostic) :-
-	suggest_diagnostic_gf(Items, NShelves, DGF),
-	transformation_gf_to_df(DGF, Ideal, Diagnostic).
+% Given a list of items, and a list of ideal places for those items in GF, suggest a diagnosis in DF.
+suggest_diagnosis_df(Items, NShelves, Ideal, Diagnosis) :-
+	suggest_diagnosis_gf(Items, NShelves, DGF),
+	transformation_gf_to_df(DGF, Ideal, Diagnosis).
 
-% Given a list of items, a list (GF) of observed items, and a list of the shelves that have already been visited, suggest a diagnostic in general form
-suggest_diagnostic_gf_with_obs(Items, NShelves, ObsGF, ObsShelves, DiagnosticGF) :-
-	suggest_diagnostic_gf(Items, NShelves, DiagnosticGF),
-	matches_observations(ObsGF, ObsShelves, DiagnosticGF).
+% Given a list of items, a list (GF) of observed items, and a list of the shelves that have already been visited, suggest a diagnosis in general form
+suggest_diagnosis_gf_with_obs(Items, NShelves, ObsGF, ObsShelves, DiagnosisGF) :-
+	suggest_diagnosis_gf(Items, NShelves, DiagnosisGF),
+	matches_observations(ObsGF, ObsShelves, DiagnosisGF).
 
-% Make sure that, if a shelf has been observed (the observations match the diagnostic)
+% Make sure that, if a shelf has been observed (the observations match the diagnosis)
 matches_observations([], [], []).
 matches_observations([_|ObsGF], [0|ObsShelves], [_|DGF]) :-
 	matches_observations(ObsGF, ObsShelves, DGF).
@@ -1843,11 +1884,11 @@ all_elements_in([X|T], L) :-
 	member_of(X, L),
 	all_elements_in(T, L).
 	
-% suggest_diagnostic_gf(Items, N, DiagnosticGF)
-% Given a list of Items and a number N of shelves, suggest a diagnostic in general form
-suggest_diagnostic_gf(Items, NShelves, DiagnosticGF) :-
+% suggest_diagnosis_gf(Items, N, DiagnosisGF)
+% Given a list of Items and a number N of shelves, suggest a diagnosis in general form
+suggest_diagnosis_gf(Items, NShelves, DiagnosisGF) :-
 	generate_list_of_items_placement(Items, NShelves, ItemsPlacement),
-	place_items_in_shelves(Items, 1, NShelves, ItemsPlacement, DiagnosticGF).
+	place_items_in_shelves(Items, 1, NShelves, ItemsPlacement, DiagnosisGF).
 
 % Distribute all Items across the N shelves, according to a placement list.
 place_items_in_shelves(Items, NShelves, NShelves, IPlacement, [Shelf]) :-
@@ -1964,7 +2005,118 @@ get_requested_items(KB, [_|Items], RequestedItems) :-
 	get_requested_items(KB, Items, RequestedItems). 
 
 
+%****************************************************************
+%---------------------------------------------------------------*
+%-----------------------Planning Module-------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
 
+
+% MAIN ROUTINES
+
+%--------------------------------------------------------------------
+% Naïve, almost surely no optimal, plan
+% brute_force_soln(Decision,Diagnosis,Ideal,CurrentLocation,Plan)
+%---------------------------------------------------------------------
+brute_force_soln([],_,_,_,[]).
+brute_force_soln(D,Diagnosis,Ideal,CurrentLoc,Plan):-
+    all_actions(D,Diagnosis,Ideal,CurrentLoc,AllActions),
+    concat_plans(AllActions,Plan).
+
+example(X):-brute_force_soln(X,[[kellogs,beer],[soup],[coke]],[[beer,coke],[soup],[kellogs]],0,P),write("Plan ="),write(P),!.
+% PONER X = lista de instrucciones    
+
+%-------------------------------------------------------------------
+% Support routines
+%---------------------------------------------------------------------
+% actions_for_instruction(Instruction,Diagnosis,Ideal, Actions) returns the primitive list of actions needed 
+% to complete Instruction, assuming the assistant starts from the origin location (0).
+actions_for_instruction(_,[],[],_,[]).
+actions_for_instruction(rearrange(I),Diagnosis,Ideal,Loc,[move(Loc,Dloc),search(I),grasp(I),move(Dloc,Cloc),release(I)]):-
+    location(I,Diagnosis,Dloc),
+    location(I,Ideal,Cloc),
+    Loc =\= Dloc,
+    Cloc =\= Dloc.
+actions_for_instruction(rearrange(I),Diagnosis,Ideal,Loc,[search(I),grasp(I),move(_,Cloc),release(I)]):-
+    location(I,Diagnosis,Loc),
+    location(I,Ideal,Cloc),
+    Cloc =\= Loc.
+actions_for_instruction(rearrange(_),_,_,_,[]).
+actions_for_instruction(bring(I), Diagnosis,_,Loc, [move(Loc,Dloc),search(I),grasp(I),move(Dloc,0),release(I)]):-
+    location(I,Diagnosis,Dloc),
+    Loc =\= Dloc.
+actions_for_instruction(bring(I), Diagnosis,_,Loc, [search(I),grasp(I),move(Loc,0),release(I)]):-
+    location(I,Diagnosis,Loc).
+    %actions_for_instruction(bring(I), Diagnosis,Ideal,Loc, []).
+
+%location(Item,[L1,L2,L3],N],  Item  is in list LN if N>0; if N=0, the item was never placed on a shelf.
+location(_,[[],[],[]], 0).
+location(I,[L1,_,_], 1):-
+    member_of(I,L1).
+location(I,[_,L2,_], 2):-
+    member_of(I,L2).
+    
+location(I,[_,_,L3], 3):-
+    member_of(I,L3).
+
+% all_actions(Instructions,Diagnosis,Ideal,AllActions)
+% AllActions is the list of all actions  required to complete all of the elements of Instructions
+all_actions([],_,_,_,[]).
+all_actions([H|T],Diagnosis,Ideal,Loc, [Aux|Rest]):-
+    actions_for_instruction(H, Diagnosis,Ideal,Loc,Aux),
+    new_location(Aux,Loc,NewLoc),
+    all_actions(T,Diagnosis,Ideal,NewLoc,Rest).
+
+new_location([],Loc,Loc).    
+new_location([move(_,Y)|T],_,NewLoc):-
+    new_location(T,Y,NewLoc).
+new_location([_|T],Loc,NewLoc):-
+    new_location(T,Loc,NewLoc).
+
+concat_plans([],[]).
+concat_plans([H],H).
+concat_plans([H|T],Glued):-
+    concat_plans(T,Aux1),
+    concat_actions(H,Aux1,Glued).
+    
+concat_actions(L,[],L).    
+concat_actions([],R,R).
+concat_actions(L,R,Glued):-
+    pick_last_of_list(L,A),
+    pick_first_of_list(R,H),
+    required_last_action(H,ReqH),
+    member_of(A,ReqH),
+    prerequisites_met(H,L),
+    append(L,R,Glued).
+
+% required_last_action(Action,Actions) returns the list of actions Actions than 
+% can preced Action
+required_last_action(move(_,_),[grasp(_), release(_)]).
+required_last_action(search(_),[move(_,_),grasp(_),release(_)]).
+required_last_action(grasp(_),[search(_)]).
+required_last_action(release(_),[move(_,_),release(_)]).
+
+% prerequisites_met(Action,Path) checks if the prerequisites for Action are met 
+% along the sequence of actions in Path
+prerequisites_met(release(I),P):-
+    member_of(grasp(I),P).
+prerequisites_met(move(_,_),_).
+prerequisites_met(search(_),_).
+prerequisites_met(grasp(_),_).
+
+pick_last_of_list([A],A).
+pick_last_of_list([_|T],A):-
+    pick_last_of_list(T,A).
+pick_first_of_list([H|_],H).
+
+card([],0).
+card([_|T],N):-
+    card(T,N1),
+    N is N1 + 1.
+
+extensions_of_list([],_,[]).
+extensions_of_list([A|T],L,[[A|L]|Others]):-
+        extensions_of_list(T,L,Others).
 
 
 
