@@ -1366,65 +1366,6 @@ patch_transform_id(100, 0).
 patch_transform_id(ID, ID).
 
 
-%Given a goal in the KB, simulate the robot behavior
-robot_simulation(KB, NewKB) :-
-	writeln("Robot begins its inference cycle"),
-	robot_diagnose(KB, Diagnosis, Aux1),
-	robot_make_decision(Aux1, Diagnosis, Decision, Aux2),
-	robot_make_plan(Aux2, Decision, Plan, Aux3),
-	writeln(""),
-	writeln("Robot goes on to perform its plan"),
-	perform_actions(Plan, _, Aux3, success, NewKB).
-
-perform_actions([], _, KB, success, KB) :-
-	writeln(''),
-	writeln('The robot is done with its pending actions'),
-	writeln('').
-perform_actions([move(_,0)|Actions], _, KB, success, NewKB) :-
-	call(robot_move(initial), KB, Result, AuxKB),
-	perform_actions(Actions, move(_,0), AuxKB, Result, NewKB).
-perform_actions([move(_,ShelfID)|Actions], _, KB, success, NewKB) :-
-	get_name_of_shelf(KB, ShelfID, ShelfName),
-	call(robot_move(ShelfName), KB, Result, AuxKB),
-	perform_actions(Actions, move(_,ShelfID), AuxKB, Result, NewKB).
-perform_actions([search(_)|Actions], _, KB, success, NewKB) :-
-	call(robot_search(KB), Result, AuxKB),
-	perform_actions(Actions, search(_), AuxKB, Result, NewKB).
-perform_actions([grasp(ItemID)|Actions], _, KB, success, NewKB) :-
-	call(robot_pick(ItemID), KB, Result, AuxKB),
-	perform_actions(Actions, grasp(ItemID), AuxKB, Result, NewKB).
-perform_actions([release(ItemID)|Actions], _, KB, success, NewKB) :-
-	call(robot_place(ItemID), KB, Result, AuxKB),
-	perform_actions(Actions, release(ItemID), AuxKB, Result, NewKB).
-
-%If the robot failed the "search" action, that means the state of the world may not be the same as what the robot thinks. Therefore, the inference cycle must be done again (a new diagnosis, decision and plan should be made once again).
-perform_actions(_, search(_), KB, failure, NewKB) :-
-	writeln(""),
-	writeln("Robot will begin its inference cycle once again"),
-	robot_diagnose(KB, Diagnosis, Aux1KB),
-	robot_make_decision(Aux1KB, Diagnosis, Decision, Aux2KB),
-	robot_make_plan(Aux2KB, Decision, Plan, Aux3KB),
-	writeln(""),
-	writeln("Robot goes on to perform its plan"),
-	perform_actions(Plan, _, Aux3KB, success, NewKB).
-
-%If the robot failed during the "grasp" or "release" actions, that means a mechanical failure was the most likely cause of it. Therefore, the action should be tried again (no inference cycle is called from this kind of failure, since failing at grasping or releasing an object doesn't have anything to do with the state of the world).
-perform_actions(Actions, grasp(ItemID), KB, failure, NewKB) :-
-	atom_concat("Robot will attempt to grasp the ", ItemID, Mes1),
-	atom_concat(Mes1, " again", Message),
-	writeln(Message),
-	call(robot_pick(ItemID), KB, Result, AuxKB),
-	perform_actions(Actions, grasp(ItemID), AuxKB, Result, NewKB).
-perform_actions(Actions, release(ItemID), KB, failure, NewKB) :-
-	atom_concat("Robot will attempt to place the ", ItemID, Mes1),
-	atom_concat(Mes1, " again", Message),
-	writeln(Message),
-	call(robot_place(ItemID), KB, Result, AuxKB),
-	perform_actions(Actions, release(ItemID), AuxKB, Result, NewKB).
-
-%Multiple cases:
-%perform_actions([move(_, PlaceID)|Actions, KB, NewKB)] :- call(robot_move(PlaceID)...
-
 %------------------------------------
 % Low-Level Actions
 %------------------------------------
@@ -1636,11 +1577,61 @@ robot_attempt(SuccessProbability, RandomNumber, failure) :-
 %---------------------------------------------------------------*
 %****************************************************************
 
-%robot_get_order(Goal)
-%robot_diagnose(KB, 
-perform_series_of_actions([Action|Actions]) :-
-	call(Action),
-	perform_series_of_actions(Actions).
+%Given a goal in the KB, simulate the robot behavior
+robot_simulation(KB, NewKB) :-
+	writeln("Robot begins its inference cycle"),
+	robot_diagnose(KB, Diagnosis, Aux1),
+	robot_make_decision(Aux1, Diagnosis, Decision, Aux2),
+	robot_make_plan(Aux2, Decision, Plan, Aux3),
+	writeln(""),
+	writeln("Robot goes on to perform its plan"),
+	perform_actions(Plan, _, Aux3, success, NewKB).
+
+perform_actions([], _, KB, success, KB) :-
+	writeln(''),
+	writeln('The robot is done with its pending actions'),
+	writeln('').
+perform_actions([move(_,0)|Actions], _, KB, success, NewKB) :-
+	call(robot_move(initial), KB, Result, AuxKB),
+	perform_actions(Actions, move(_,0), AuxKB, Result, NewKB).
+perform_actions([move(_,ShelfID)|Actions], _, KB, success, NewKB) :-
+	get_name_of_shelf(KB, ShelfID, ShelfName),
+	call(robot_move(ShelfName), KB, Result, AuxKB),
+	perform_actions(Actions, move(_,ShelfID), AuxKB, Result, NewKB).
+perform_actions([search(_)|Actions], _, KB, success, NewKB) :-
+	call(robot_search(KB), Result, AuxKB),
+	perform_actions(Actions, search(_), AuxKB, Result, NewKB).
+perform_actions([grasp(ItemID)|Actions], _, KB, success, NewKB) :-
+	call(robot_pick(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, grasp(ItemID), AuxKB, Result, NewKB).
+perform_actions([release(ItemID)|Actions], _, KB, success, NewKB) :-
+	call(robot_place(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, release(ItemID), AuxKB, Result, NewKB).
+
+%If the robot failed the "search" action, that means the state of the world may not be the same as what the robot thinks. Therefore, the inference cycle must be done again (a new diagnosis, decision and plan should be made once again).
+perform_actions(_, search(_), KB, failure, NewKB) :-
+	writeln(""),
+	writeln("Robot will begin its inference cycle once again"),
+	robot_diagnose(KB, Diagnosis, Aux1KB),
+	robot_make_decision(Aux1KB, Diagnosis, Decision, Aux2KB),
+	robot_make_plan(Aux2KB, Decision, Plan, Aux3KB),
+	writeln(""),
+	writeln("Robot goes on to perform its plan"),
+	perform_actions(Plan, _, Aux3KB, success, NewKB).
+
+%If the robot failed during the "grasp" or "release" actions, that means a mechanical failure was the most likely cause of it. Therefore, the action should be tried again (no inference cycle is called from this kind of failure, since failing at grasping or releasing an object doesn't have anything to do with the state of the world).
+perform_actions(Actions, grasp(ItemID), KB, failure, NewKB) :-
+	atom_concat("Robot will attempt to grasp the ", ItemID, Mes1),
+	atom_concat(Mes1, " again", Message),
+	writeln(Message),
+	call(robot_pick(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, grasp(ItemID), AuxKB, Result, NewKB).
+perform_actions(Actions, release(ItemID), KB, failure, NewKB) :-
+	atom_concat("Robot will attempt to place the ", ItemID, Mes1),
+	atom_concat(Mes1, " again", Message),
+	writeln(Message),
+	call(robot_place(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, release(ItemID), AuxKB, Result, NewKB).
 
 %****************************************************************
 %---------------------------------------------------------------*
