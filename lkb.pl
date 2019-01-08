@@ -1428,7 +1428,8 @@ robot_search(KB, failure, NewKB) :-
 	robot_search_all_items(KB, RealItemsInShelf, Aux1KB),	
 	change_property_of_object(visited=>_, visited=>yes, RobotPosition, Aux1KB, Aux2KB),
 	update_placed_items(Aux2KB, RealItemsInShelf, NewKB), 
-	writeln('Robot found inconsistencies with its beliefs').
+	writeln(''),
+	writeln('ERROR: Robot found inconsistencies with its beliefs').
 
 update_placed_items(KB, [], KB).
 update_placed_items(KB, [Item|Items], NewKB) :-
@@ -1579,12 +1580,14 @@ robot_attempt(SuccessProbability, RandomNumber, failure) :-
 
 %Given a goal in the KB, simulate the robot behavior
 robot_simulation(KB, NewKB) :-
-	writeln("Robot begins its inference cycle"),
+	writeln("Robot begins its inference cycle:"),
+	writeln(""),
 	robot_diagnose(KB, Diagnosis, Aux1),
 	robot_make_decision(Aux1, Diagnosis, Decision, Aux2),
 	robot_make_plan(Aux2, Decision, Plan, Aux3),
 	writeln(""),
-	writeln("Robot goes on to perform its plan"),
+	writeln("Robot goes on to perform its plan:"),
+	writeln(""),
 	perform_actions(Plan, _, Aux3, success, NewKB).
 
 perform_actions([], _, KB, success, KB) :-
@@ -1611,12 +1614,14 @@ perform_actions([release(ItemID)|Actions], _, KB, success, NewKB) :-
 %If the robot failed the "search" action, that means the state of the world may not be the same as what the robot thinks. Therefore, the inference cycle must be done again (a new diagnosis, decision and plan should be made once again).
 perform_actions(_, search(_), KB, failure, NewKB) :-
 	writeln(""),
-	writeln("Robot will begin its inference cycle once again"),
+	writeln("Robot will begin its inference cycle once again:"),
+	writeln(""),
 	robot_diagnose(KB, Diagnosis, Aux1KB),
 	robot_make_decision(Aux1KB, Diagnosis, Decision, Aux2KB),
 	robot_make_plan(Aux2KB, Decision, Plan, Aux3KB),
 	writeln(""),
-	writeln("Robot goes on to perform its plan"),
+	writeln("Robot goes on to perform its plan:"),
+	writeln(""),
 	perform_actions(Plan, _, Aux3KB, success, NewKB).
 
 %If the robot failed during the "grasp" or "release" actions, that means a mechanical failure was the most likely cause of it. Therefore, the action should be tried again (no inference cycle is called from this kind of failure, since failing at grasping or releasing an object doesn't have anything to do with the state of the world).
