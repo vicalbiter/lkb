@@ -1236,7 +1236,7 @@ validate_placed_items(KB, [_|Items], PlacedItems) :-
 get_list_of_visited_shelves(KB, ObservedShelves) :-
 	get_class_extension(world, KB, Places),
 	validate_shelf_types(KB, Places, Shelves),
-	get_visited_property_from_shelves(KB, Shelves, Shelves, 1, ShelvesYesNo),
+	get_visited_property_from_shelves(KB, Shelves, ShelvesYesNo),
 	transform_yesno_to_zeroone(ShelvesYesNo, ObservedShelves),
 	!.
 
@@ -1265,25 +1265,42 @@ validate_shelf_types(KB, [_|Places], Shelves) :-
 
 
 %%%
-get_visited_property_from_shelves(_, [], _, _, []).
-get_visited_property_from_shelves(KB, [_|Shelves], TestShelves, X, [Visited|VisitedShelves]) :-
-	test_vp(KB, TestShelves, 1, Visited),
-	Y is X + 1,
-	get_visited_property_from_shelves(KB, Shelves, TestShelves, Y, VisitedShelves).
+get_visited_property_from_shelves(_, [], []).
+get_visited_property_from_shelves(KB, [Shelf|Shelves], [Visited|VisitedShelves]) :-
+	get_vp(KB, Shelf, 1, Visited),
+	get_visited_property_from_shelves(KB, Shelves, VisitedShelves).
 
-test_vp(KB, [_|Shelves], X, Visited) :-
-	Y is X + 1,
-	test_vp(KB, Shelves, Y, Visited).
-test_vp(KB, [Shelf|_], X, Visited) :-
+get_vp(KB, Shelf, X, Visited) :-
 	get_explicit_object_properties(Shelf, KB, ShelfProperties),
 	get_property_from_list(id, ShelfProperties, X),
 	get_property_from_list(visited, ShelfProperties, Visited).
+get_vp(KB, Shelf, X, Visited) :-
+	Y is X + 1,
+	get_vp(KB, Shelf, Y, Visited).
+	
+
 
 % Get the contents of the shelf with the property id=>ShelfID
 get_items_in_shelf(ShelfID, ShelfID, [Shelf|_], Shelf).
 get_items_in_shelf(X, ShelfID, [_|ItemsGF], Shelf) :-	
 	Y is X + 1,	
 	get_items_in_shelf(Y, ShelfID, ItemsGF, Shelf).
+
+
+% We have a list of shelves with a containment of items
+% Given an id, get the label of the shelf with that id
+get_name_of_shelf(KB, ID, ShelfName) :-
+	get_class_extension(world, KB, Places),
+	validate_shelf_types(KB, Places, Shelves),
+	get_name_of_shelf_with_id(KB, ID, Shelves, ShelfName),
+	!.
+
+get_name_of_shelf_with_id(_, _, [], []).
+get_name_of_shelf_with_id(KB, ID, [Shelf|_], Shelf) :-
+	get_explicit_object_properties(Shelf, KB, ShelfProperties),
+	get_property_from_list(id, ShelfProperties, ID).	
+get_name_of_shelf_with_id(KB, ID, [_|Shelves], Shelf) :-
+	get_name_of_shelf_with_id(KB, ID, Shelves, Shelf).
 
 %****************************************************************
 %---------------------------------------------------------------*
@@ -1321,25 +1338,31 @@ update_diagnosed_location_for_items_in_shelf(KB, [Item|ShelfContents], ShelfName
 	change_property_of_object(diagnosedLoc=>_, diagnosedLoc=>ShelfName, Item, KB, AuxKB),
 	update_diagnosed_location_for_items_in_shelf(AuxKB, ShelfContents, ShelfName, NewKB).
 
-	
-% We have a list of shelves with a containment of items
-% Given an id, get the label of the shelf with that id
-get_name_of_shelf(KB, ID, ShelfName) :-
-	get_class_extension(world, KB, Places),
-	validate_shelf_types(KB, Places, Shelves),
-	get_name_of_shelf_with_id(KB, ID, Shelves, ShelfName),
-	!.
-
-get_name_of_shelf_with_id(_, _, [], []).
-get_name_of_shelf_with_id(KB, ID, [Shelf|_], Shelf) :-
-	get_explicit_object_properties(Shelf, KB, ShelfProperties),
-	get_property_from_list(id, ShelfProperties, ID).	
-get_name_of_shelf_with_id(KB, ID, [_|Shelves], Shelf) :-
-	get_name_of_shelf_with_id(KB, ID, Shelves, Shelf).
-
 %robot_make_decision(¿?) -> Builds a decision list, updates KB (decisionList)
 %robot_make_plan(¿?) -> Builds a plan, updates KB (plan)
 %robot_execute_plan -> TBD
+
+perform_actions([], KB, success, KB) :-
+	writeln('Done').
+perform_actions([move(ShelfID)|Actions], KB, success, NewKB) :-
+	call(robot_move(ShelfID), KB, Result, AuxKB),
+	perform_actions(Actions, AuxKB, Result, NewKB).
+perform_actions([search(_)|Actions], KB, success, NewKB) :-
+	call(robot_search(KB), Result, AuxKB),
+	perform_actions(Actions, AuxKB, Result, NewKB).
+perform_actions([grasp(ItemID)|Actions], KB, success, NewKB) :-
+	call(robot_pick(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, AuxKB, Result, NewKB).
+perform_actions([place(ItemID)|Actions], KB, success, NewKB) :-
+	call(robot_place(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, AuxKB, Result, NewKB).
+perform_actions(_, KB, failure, NewKB) :-
+	robot_diagnose(KB, Diagnostic, NewKB),
+	writeln('New Diagnostic:'),	
+	writeln(Diagnostic).
+
+%Multiple cases:
+%perform_actions([move(_, PlaceID)|Actions, KB, NewKB)] :- call(robot_move(PlaceID)...
 
 %------------------------------------
 % Low-Level Actions
@@ -1352,7 +1375,7 @@ get_name_of_shelf_with_id(KB, ID, [_|Shelves], Shelf) :-
 % Description: Attempt to move from the robot's current position to the LocationID.
 % If successful: Update the robot's current position in the KB (the new property will be positionID => LocationID).
 % Fails if: Mechanical failure (the robot couldn't get to the location -> determined in the simulation by the robot's property probMove)
-robot_move(KB, LocationID, Result, NewKB) :-
+robot_move(LocationID, KB, Result, NewKB) :-
 	get_explicit_object_properties(robbie, KB, RobotProperties),
 	get_property_from_list(probMove, RobotProperties, ProbMove),
 	%validate_existing_location?	
@@ -1463,7 +1486,7 @@ robot_attempt_search(KB, ItemID, _, _, failure, failure, KB) :-
 % Attempt to pick an item at the robot's current position. Update KB if the attempt was successful.
 % If successful: Update the item's current observedLoc and realLoc to the robot's hand (observedLoc => robotHand, realLoc => robotHand). Update one of the empty robot's hands to ItemID.
 % Fails if: Mechanical failure (the robot couldn't pick the item -> determined in the simulation by the item's property probPicked)
-robot_pick(KB, ItemID, Result, NewKB) :-
+robot_pick(ItemID, KB, Result, NewKB) :-
 	get_explicit_object_properties(ItemID, KB, ItemProperties),
 	get_property_from_list(probPicked, ItemProperties, ProbPicked),
 	%validate_item_is_at_robot_position?
@@ -1500,7 +1523,7 @@ place_item_in_robot_hands(Item, [X, empty], [X, Item]).
 % Attempt to place an item in the robot's hands at the robot's current position. Update KB if the attempt was successful.
 % If successful: Update the item's current observedLoc and realLoc to the robot's current position (observedLoc => robotPosition, realLoc => robotPosition). Update the robot hand's in which the ItemID was placed to empty.
 % Fails if: Mechanical failure (the robot couldn't place the item -> determined in the simulation by the item's property probPlaced.
-robot_place(KB, ItemID, Result, NewKB) :-
+robot_place(ItemID, KB, Result, NewKB) :-
 	get_explicit_object_properties(ItemID, KB, ItemProperties),
 	get_property_from_list(probPlaced, ItemProperties, ProbPlaced),
 	%validate_item_is_in_robot_hands?
@@ -1552,7 +1575,9 @@ robot_attempt(SuccessProbability, RandomNumber, failure) :-
 
 %robot_get_order(Goal)
 %robot_diagnose(KB, 
-
+perform_series_of_actions([Action|Actions]) :-
+	call(Action),
+	perform_series_of_actions(Actions).
 
 %****************************************************************
 %---------------------------------------------------------------*
