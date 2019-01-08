@@ -1347,8 +1347,8 @@ robot_make_decision(KB, Diagnosis, Decision, NewKB) :-
 	writeln("Robot's decision: "),
 	writeln(Decision).
 
-%robot_make_plan(¿?) -> Builds a plan, updates KB (plan)
-% brute_force_soln(Decision,Diagnosis,Ideal,CurrentLocation,Plan)
+%robot_make_plan(KB, Decision, Plan, NewKB) -> Builds a plan, updates KB (plan)
+% dfs_soln(Decision,Diagnosis,Ideal,CurrentLocation,ItemsCarried,Plan)
 robot_make_plan(KB, Decision, Plan, NewKB) :-
 	get_explicit_object_properties(robbie, KB, RobotProperties),
 	get_property_from_list(positionLabel, RobotProperties, RobotLocation),
@@ -1357,10 +1357,35 @@ robot_make_plan(KB, Decision, Plan, NewKB) :-
 	patch_transform_id(RLID, RobotLocationID),
 	get_diagnosed_locations_gf(KB, 3, Diagnosis),
 	get_ideal_locations_gf(KB, 3, Ideal),
-	brute_force_soln(Decision, Diagnosis, Ideal, RobotLocationID, Plan),
+	%get_property_from_list(hands, RobotProperties, Hands),
+	dfs_soln(Decision, Diagnosis, Ideal, RobotLocationID, Plan),
 	change_property_of_object(plan=>_, plan=>Plan, robbie, KB, NewKB),
+	exchange_ids_for_names(KB, Plan, NewPlan),
 	writeln("Robot's plan: "),
-	writeln(Plan).
+	writeln(NewPlan).
+
+exchange_ids_for_names(_, [], []).
+exchange_ids_for_names(KB, [search(ID)|Actions], [search(ID)|NewActions]) :-
+	exchange_ids_for_names(KB, Actions, NewActions).
+exchange_ids_for_names(KB, [grasp(ID)|Actions], [grasp(ID)|NewActions]) :-
+	exchange_ids_for_names(KB, Actions, NewActions).
+exchange_ids_for_names(KB, [release(ID)|Actions], [release(ID)|NewActions]) :-
+	exchange_ids_for_names(KB, Actions, NewActions).
+exchange_ids_for_names(KB, [move(0, ID)|Actions], [move(Shelf)|NewActions]) :-
+	get_name_of_shelf(KB, ID, Shelf),	
+	exchange_ids_for_names(KB, Actions, NewActions).
+exchange_ids_for_names(KB, [move(_, 0)|Actions], [move(initial)|NewActions]) :-
+%	get_name_of_shelf(KB, ID, Shelf),
+	exchange_ids_for_names(KB, Actions, NewActions).
+exchange_ids_for_names(KB, [move(_, ID2)|Actions], [move(Shelf2)|NewActions]) :-
+%	get_name_of_shelf(KB, ID1, Shelf1),
+	get_name_of_shelf(KB, ID2, Shelf2),
+	exchange_ids_for_names(KB, Actions, NewActions).
+
+robot_diagnose_decide_plan(KB, NewKB) :-
+	robot_diagnose(KB, Diagnosis, Aux1KB),
+	robot_make_decision(Aux1KB, Diagnosis, Decision, Aux2KB),
+	robot_make_plan(Aux2KB, Decision, _, NewKB).
 
 patch_transform_id(100, 0).
 patch_transform_id(ID, ID).
@@ -1517,8 +1542,8 @@ robot_attempt_pick(KB, ItemID, failure, KB) :-
 	writeln(Message).
 	%writeln('The item could not be picked up').
 
-place_item_in_robot_hands(Item, [empty, empty], [Item, empty]).
-place_item_in_robot_hands(Item, [X, empty], [X, Item]).
+place_item_in_robot_hands(Item, [], [Item]).
+place_item_in_robot_hands(Item, [X], [X, Item]).
 
 
 %robot_place(KB, ItemID, Result, NewKB)
@@ -1554,8 +1579,9 @@ robot_attempt_place(KB, ItemID, failure, KB) :-
 	atom_concat(Mes1, ' could not be placed', Message),
 	writeln(Message). 
 
-remove_item_from_robot_hands(Item, [Item, X], [empty, X]).
-remove_item_from_robot_hands(Item, [X, Item], [X, empty]).
+remove_item_from_robot_hands(Item, [Item, X], [X]).
+remove_item_from_robot_hands(Item, [Item], []).
+remove_item_from_robot_hands(Item, [X, Item], [X]).
 
 
 	
@@ -2034,14 +2060,14 @@ get_requested_items(KB, [_|Items], RequestedItems) :-
 
 %--------------------------------------------------------------------
 % Naïve, almost surely no optimal, plan
-% brute_force_soln(Decision,Diagnosis,Ideal,CurrentLocation,Plan)
+% dfs_soln(Decision,Diagnosis,Ideal,CurrentLocation,Plan)
 %---------------------------------------------------------------------
-brute_force_soln([],_,_,_,[]).
-brute_force_soln(D,Diagnosis,Ideal,CurrentLoc,Plan):-
+dfs_soln([],_,_,_,[]).
+dfs_soln(D,Diagnosis,Ideal,CurrentLoc,Plan):-
     all_actions(D,Diagnosis,Ideal,CurrentLoc,AllActions),
     concat_plans(AllActions,Plan).
 
-example(X):-brute_force_soln(X,[[kellogs,beer],[soup],[coke]],[[beer,coke],[soup],[kellogs]],0,P),write("Plan ="),write(P),!.
+example(X):-dfs_soln(X,[[kellogs,beer],[soup],[coke]],[[beer,coke],[soup],[kellogs]],0,P),write("Plan ="),write(P),!.
 % PONER X = lista de instrucciones    
 
 %-------------------------------------------------------------------
@@ -2135,11 +2161,6 @@ card([_|T],N):-
 extensions_of_list([],_,[]).
 extensions_of_list([A|T],L,[[A|L]|Others]):-
         extensions_of_list(T,L,Others).
-
-
-
-
-
 
 
 

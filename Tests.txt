@@ -1,0 +1,231 @@
+Existen 5 ítems en el mundo: soda, cerveza, sopa, snickers, doritos
+
+Ejemplo 1 (Flexibilidad del robot a encontrar items que no fueron reportados por el asistente): El asistente de supermercado le reporta al robot que la soda, la sopa, y los snickers fueron colocados. El asistente colocó dichos ítems de manera correcta, no obstante, también colocó la cerveza y los doritos en el estante de bebidas. El cliente le pide al robot la soda.
+
+Observaciones: El primer diagnóstico no contempla los doritos, pues el asistente no le informó al robot el haberlos colocado. No obstante, después de observar el estante de las bebidas, el robot se da cuenta de que en realidad los doritos sí fueron colocados, y con base en ello, hace su diagnóstico y toma la decisión de reordenarlos.
+
+?- openk(KB), robot_simulation(KB, NewKB).
+Robot begins its inference cycle:
+
+Robot's diagnosis: 
+[place(soda),move(shelf1),place(soup),move(shelf2),place(snickers),move(shelf3)]
+Robot's decision: 
+[bring(soda)]
+Robot's plan: 
+[move(0,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+Robot moved successfully to drinks
+The soda was found
+The beer was found
+The doritos was found
+
+ERROR: Robot found inconsistencies with its beliefs
+
+Robot will begin its inference cycle once again:
+
+Robot's diagnosis: 
+[place(soda),place(beer),misplace(doritos),move(shelf1),place(soup),move(shelf2),place(snickers),move(shelf3)]
+Robot's decision: 
+[rearrange(doritos),bring(soda)]
+Robot's plan: 
+[search(doritos),grasp(doritos),move(_42726,3),release(doritos),move(3,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+The soda was found
+The beer was found
+The doritos was found
+The doritos was picked up by the robot
+Robot moved successfully to snacks
+The doritos was placed successfully
+Robot moved successfully to drinks
+The soda was found
+The beer was found
+The soda was picked up by the robot
+Robot moved successfully to initial
+The soda was placed successfully
+
+The robot is done with its pending actions
+
+
+
+KB Inicial:
+
+[class(top,none,[],[],[],[],[]),class(world,top,[],[],[],[],[[[drinks],[visited=>no,position=>[1,0],id=>1,type=>shelf],[],[],[]],[[food],[visited=>no,position=>[1,1],id=>2,type=>shelf],[],[],[]],[[snacks],[visited=>no,position=>[0,1],id=>3,type=>shelf],[],[],[]],[[nowhere],[id=>0],[],[],[]],[[initial],[position=>[0,0],id=>100],[],[],[]]]),class(robot,top,[],[],[],[],[[[robbie],[positionLabel=>initial,plan=>[],decisionList=>[],hands=>[],probMove=>1],[],[],[]]]),class(items,top,[],[],[],[],[[[soda],[isRequested=>yes,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[beer],[isRequested=>no,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[soup],[isRequested=>no,idealLoc=>food,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>food,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[snickers],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>snacks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[doritos],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]]])]
+
+------------------------------------------------------------------
+
+Ejemplo 1b)
+El escenario es el mismo que el anterior, con la diferencia de que la soda es muy difícil de colocar. El robot intentará colocar la soda hasta que lo logre.
+
+
+?- openk(KB), robot_simulation(KB, NewKB).
+Robot begins its inference cycle:
+
+Robot's diagnosis: 
+[place(soda),move(shelf1),place(soup),move(shelf2),place(snickers),move(shelf3)]
+Robot's decision: 
+[bring(soda)]
+Robot's plan: 
+[move(0,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+Robot moved successfully to drinks
+The soda was found
+The beer was found
+The doritos was found
+
+ERROR: Robot found inconsistencies with its beliefs
+
+Robot will begin its inference cycle once again:
+
+Robot's diagnosis: 
+[place(soda),place(beer),misplace(doritos),move(shelf1),place(soup),move(shelf2),place(snickers),move(shelf3)]
+Robot's decision: 
+[rearrange(doritos),bring(soda)]
+Robot's plan: 
+[search(doritos),grasp(doritos),move(_42768,3),release(doritos),move(3,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+The soda was found
+The beer was found
+The doritos was found
+The doritos was picked up by the robot
+Robot moved successfully to snacks
+The doritos was placed successfully
+Robot moved successfully to drinks
+The soda was found
+The beer was found
+The soda was picked up by the robot
+Robot moved successfully to initial
+The soda could not be placed
+Robot will attempt to place the soda again
+The soda could not be placed
+Robot will attempt to place the soda again
+The soda could not be placed
+Robot will attempt to place the soda again
+The soda could not be placed
+Robot will attempt to place the soda again
+The soda was placed successfully
+
+The robot is done with its pending actions
+
+KB Inicial (nótese el cambio en la probabilidad de la soda de ser agarrada).
+
+[class(top,none,[],[],[],[],[]),class(world,top,[],[],[],[],[[[drinks],[visited=>no,position=>[1,0],id=>1,type=>shelf],[],[],[]],[[food],[visited=>no,position=>[1,1],id=>2,type=>shelf],[],[],[]],[[snacks],[visited=>no,position=>[0,1],id=>3,type=>shelf],[],[],[]],[[nowhere],[id=>0],[],[],[]],[[initial],[position=>[0,0],id=>100],[],[],[]]]),class(robot,top,[],[],[],[],[[[robbie],[positionLabel=>initial,plan=>[],decisionList=>[],hands=>[],probMove=>1],[],[],[]]]),class(items,top,[],[],[],[],[[[soda],[isRequested=>yes,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>0.3],[],[],[]],[[beer],[isRequested=>no,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[soup],[isRequested=>no,idealLoc=>food,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>food,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[snickers],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>snacks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[doritos],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]]])]
+
+--------------------------------------------------------------------------
+Ejemplo 2.
+El Asistente de supermercado reporta al robot haber colocado todos los items, no obstante, la soda está en el estante de los snacks, y los doritos están en el estante de las bebidas. Se observa que, en este caso, el segundo diagnóstico resulta ser consistente a lo largo de toda la ejecución del plan, por lo que el robot tiene que volver a hacer su ciclo de inferencia.
+
+?- openk(KB), robot_simulation(KB, NewKB).
+Robot begins its inference cycle:
+
+Robot's diagnosis: 
+[place(soda),place(beer),move(shelf1),place(soup),move(shelf2),place(snickers),place(doritos),move(shelf3)]
+Robot's decision: 
+[bring(soda)]
+Robot's plan: 
+[move(0,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+Robot moved successfully to drinks
+The beer was found
+The doritos was found
+
+ERROR: Robot found inconsistencies with its beliefs
+
+Robot will begin its inference cycle once again:
+
+Robot's diagnosis: 
+[place(beer),misplace(doritos),move(shelf1),place(soup),move(shelf2),misplace(soda),place(snickers),move(shelf3)]
+Robot's decision: 
+[rearrange(doritos),bring(soda)]
+Robot's plan: 
+[search(doritos),grasp(doritos),move(_116982,3),release(doritos),search(soda),grasp(soda),move(3,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+The beer was found
+The doritos was found
+The doritos was picked up by the robot
+Robot moved successfully to snacks
+The doritos was placed successfully
+The soda was found
+The snickers was found
+The doritos was found
+The soda was picked up by the robot
+Robot moved successfully to initial
+The soda was placed successfully
+
+The robot is done with its pending actions
+
+
+KB Inicial:
+
+[class(top,none,[],[],[],[],[]),class(world,top,[],[],[],[],[[[drinks],[visited=>no,position=>[1,0],id=>1,type=>shelf],[],[],[]],[[food],[visited=>no,position=>[1,1],id=>2,type=>shelf],[],[],[]],[[snacks],[visited=>no,position=>[0,1],id=>3,type=>shelf],[],[],[]],[[nowhere],[id=>0],[],[],[]],[[initial],[position=>[0,0],id=>100],[],[],[]]]),class(robot,top,[],[],[],[],[[[robbie],[positionLabel=>initial,plan=>[],decisionList=>[],hands=>[],probMove=>1],[],[],[]]]),class(items,top,[],[],[],[],[[[soda],[isRequested=>yes,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>snacks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[beer],[isRequested=>no,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[soup],[isRequested=>no,idealLoc=>food,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>food,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[snickers],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>snacks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[doritos],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]]])]
+
+--------------------------------------------------------------
+Ejemplo 3c.
+El asistente de supermercado reporta haber colocado sólo la cerveza y la soda. No obstante, éste colocó también, en el estante de bebidas, la sopa. Así mismo, en el estante de comida, colocó los doritos, y en el estante de snacks colocó los snickers.
+
+En este caso, se observa cómo el robot no se encarga de reacomodar los doritos en su estante, pues su única meta con respecto al estante de comida es llevar la sopa (esto es, no realiza ninguna búsqueda una vez que está ahí). Asimismo, puede apreciarse nuevamente cómo el robot ajusta sus diagnósticos cuando encuentra más items que los reportados por el asistente de supermercado.
+
+
+?- openk(KB), robot_simulation(KB, NewKB).
+Robot begins its inference cycle:
+
+Robot's diagnosis: 
+[place(soda),place(beer),move(shelf1)]
+Robot's decision: 
+[bring(soda)]
+Robot's plan: 
+[move(0,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+Robot moved successfully to drinks
+The soda was found
+The beer was found
+The soup was found
+
+ERROR: Robot found inconsistencies with its beliefs
+
+Robot will begin its inference cycle once again:
+
+Robot's diagnosis: 
+[place(soda),place(beer),misplace(soup),move(shelf1)]
+Robot's decision: 
+[rearrange(soup),bring(soda)]
+Robot's plan: 
+[search(soup),grasp(soup),move(_35350,2),release(soup),move(2,1),search(soda),grasp(soda),move(1,0),release(soda)]
+
+Robot goes on to perform its plan:
+
+The soda was found
+The beer was found
+The soup was found
+The soup was picked up by the robot
+Robot moved successfully to food
+The soup was placed successfully
+Robot moved successfully to drinks
+The soda was found
+The beer was found
+The soda was picked up by the robot
+Robot moved successfully to initial
+The soda was placed successfully
+
+The robot is done with its pending actions
+
+
+KB Inicial:
+
+[class(top,none,[],[],[],[],[]),class(world,top,[],[],[],[],[[[drinks],[visited=>no,position=>[1,0],id=>1,type=>shelf],[],[],[]],[[food],[visited=>no,position=>[1,1],id=>2,type=>shelf],[],[],[]],[[snacks],[visited=>no,position=>[0,1],id=>3,type=>shelf],[],[],[]],[[nowhere],[id=>0],[],[],[]],[[initial],[position=>[0,0],id=>100],[],[],[]]]),class(robot,top,[],[],[],[],[[[robbie],[positionLabel=>initial,plan=>[],decisionList=>[],hands=>[],probMove=>1],[],[],[]]]),class(items,top,[],[],[],[],[[[soda],[isRequested=>yes,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[beer],[isRequested=>no,idealLoc=>drinks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>yes,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[soup],[isRequested=>no,idealLoc=>food,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>drinks,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[snickers],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>food,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]],[[doritos],[isRequested=>no,idealLoc=>snacks,observedLoc=>nowhere,diagnosedLoc=>nowhere,realLoc=>snacks,isPlaced=>no,probSeen=>1,probPicked=>1,probPlaced=>1],[],[],[]]])]
+
+
+
