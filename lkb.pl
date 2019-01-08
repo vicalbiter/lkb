@@ -1364,7 +1364,9 @@ robot_make_plan(KB, Decision, Plan, NewKB) :-
 
 patch_transform_id(100, 0).
 patch_transform_id(ID, ID).
-%robot_execute_plan
+
+
+%Given a goal in the KB, simulate the robot behavior
 robot_simulation(KB, NewKB) :-
 	writeln("Robot begins its inference cycle"),
 	robot_diagnose(KB, Diagnosis, Aux1),
@@ -1372,35 +1374,53 @@ robot_simulation(KB, NewKB) :-
 	robot_make_plan(Aux2, Decision, Plan, Aux3),
 	writeln(""),
 	writeln("Robot goes on to perform its plan"),
-	perform_actions(Plan, Aux3, success, NewKB).
+	perform_actions(Plan, _, Aux3, success, NewKB).
 
-perform_actions([], KB, success, KB) :-
-	writeln('Done').
-perform_actions([move(_,0)|Actions], KB, success, NewKB) :-
+perform_actions([], _, KB, success, KB) :-
+	writeln(''),
+	writeln('The robot is done with its pending actions'),
+	writeln('').
+perform_actions([move(_,0)|Actions], _, KB, success, NewKB) :-
 	call(robot_move(initial), KB, Result, AuxKB),
-	perform_actions(Actions, AuxKB, Result, NewKB).
-perform_actions([move(_,ShelfID)|Actions], KB, success, NewKB) :-
+	perform_actions(Actions, move(_,0), AuxKB, Result, NewKB).
+perform_actions([move(_,ShelfID)|Actions], _, KB, success, NewKB) :-
 	get_name_of_shelf(KB, ShelfID, ShelfName),
 	call(robot_move(ShelfName), KB, Result, AuxKB),
-	perform_actions(Actions, AuxKB, Result, NewKB).
-perform_actions([search(_)|Actions], KB, success, NewKB) :-
+	perform_actions(Actions, move(_,ShelfID), AuxKB, Result, NewKB).
+perform_actions([search(_)|Actions], _, KB, success, NewKB) :-
 	call(robot_search(KB), Result, AuxKB),
-	perform_actions(Actions, AuxKB, Result, NewKB).
-perform_actions([grasp(ItemID)|Actions], KB, success, NewKB) :-
+	perform_actions(Actions, search(_), AuxKB, Result, NewKB).
+perform_actions([grasp(ItemID)|Actions], _, KB, success, NewKB) :-
 	call(robot_pick(ItemID), KB, Result, AuxKB),
-	perform_actions(Actions, AuxKB, Result, NewKB).
-perform_actions([release(ItemID)|Actions], KB, success, NewKB) :-
+	perform_actions(Actions, grasp(ItemID), AuxKB, Result, NewKB).
+perform_actions([release(ItemID)|Actions], _, KB, success, NewKB) :-
 	call(robot_place(ItemID), KB, Result, AuxKB),
-	perform_actions(Actions, AuxKB, Result, NewKB).
-perform_actions(_, KB, failure, NewKB) :-
+	perform_actions(Actions, release(ItemID), AuxKB, Result, NewKB).
+
+%If the robot failed the "search" action, that means the state of the world may not be the same as what the robot thinks. Therefore, the inference cycle must be done again (a new diagnosis, decision and plan should be made once again).
+perform_actions(_, search(_), KB, failure, NewKB) :-
 	writeln(""),
-	writeln("Robot begins its inference cycle"),
+	writeln("Robot will begin its inference cycle once again"),
 	robot_diagnose(KB, Diagnosis, Aux1KB),
 	robot_make_decision(Aux1KB, Diagnosis, Decision, Aux2KB),
 	robot_make_plan(Aux2KB, Decision, Plan, Aux3KB),
 	writeln(""),
 	writeln("Robot goes on to perform its plan"),
-	perform_actions(Plan, Aux3KB, success, NewKB).
+	perform_actions(Plan, _, Aux3KB, success, NewKB).
+
+%If the robot failed during the "grasp" or "release" actions, that means a mechanical failure was the most likely cause of it. Therefore, the action should be tried again (no inference cycle is called from this kind of failure, since failing at grasping or releasing an object doesn't have anything to do with the state of the world).
+perform_actions(Actions, grasp(ItemID), KB, failure, NewKB) :-
+	atom_concat("Robot will attempt to grasp the ", ItemID, Mes1),
+	atom_concat(Mes1, " again", Message),
+	writeln(Message),
+	call(robot_pick(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, grasp(ItemID), AuxKB, Result, NewKB).
+perform_actions(Actions, release(ItemID), KB, failure, NewKB) :-
+	atom_concat("Robot will attempt to place the ", ItemID, Mes1),
+	atom_concat(Mes1, " again", Message),
+	writeln(Message),
+	call(robot_place(ItemID), KB, Result, AuxKB),
+	perform_actions(Actions, release(ItemID), AuxKB, Result, NewKB).
 
 %Multiple cases:
 %perform_actions([move(_, PlaceID)|Actions, KB, NewKB)] :- call(robot_move(PlaceID)...
@@ -1451,8 +1471,8 @@ robot_search(KB, success, NewKB) :-
 	get_items_in_shelf(1, RobotPositionID, DiagnosedLocations, DiagnosedItemsInShelf),
 	lists_are_equal(RealItemsInShelf, DiagnosedItemsInShelf),	%Compare diagnosed/real contents
 	robot_search_all_items(KB, RealItemsInShelf, AuxKB),
-	change_property_of_object(visited=>_, visited=>yes, RobotPosition, AuxKB, NewKB),
-	writeln('Robot did not find any inconsistencies with its beliefs').
+	change_property_of_object(visited=>_, visited=>yes, RobotPosition, AuxKB, NewKB).
+	%writeln('Robot did not find any inconsistencies with its beliefs').
 
 robot_search(KB, failure, NewKB) :-
 	get_explicit_object_properties(robbie, KB, RobotProperties),
@@ -1539,7 +1559,8 @@ robot_pick(ItemID, KB, Result, NewKB) :-
 robot_attempt_pick(KB, ItemID, success, NewKB) :-
 	change_property_of_object(realLoc=>_,realLoc=>robot, ItemID, KB, Aux1KB),
 	change_property_of_object(observedLoc=>_,observedLoc=>robot, ItemID, Aux1KB, Aux2KB),
-	get_explicit_object_properties(robbie, Aux2KB, RobotProperties),
+	change_property_of_object(diagnosedLoc=>_, diagnosedLoc=>robot, ItemID, Aux2KB, Aux3KB),
+	get_explicit_object_properties(robbie, Aux3KB, RobotProperties),
 	get_property_from_list(hands, RobotProperties, Hands),
 	place_item_in_robot_hands(ItemID, Hands, NewHands),
 	change_property_of_object(hands=>_, hands=>NewHands, robbie, Aux2KB, NewKB), 
@@ -1578,9 +1599,10 @@ robot_attempt_place(KB, ItemID, success, NewKB) :-
 	get_property_from_list(positionLabel, RobotProperties, RobotPosition),
 	change_property_of_object(realLoc=>_, realLoc=>RobotPosition, ItemID, KB, Aux1KB),
 	change_property_of_object(observedLoc=>_, observedLoc=>RobotPosition, ItemID, Aux1KB, Aux2KB),
+	change_property_of_object(diagnosedLoc=>_, diagnosedLoc=>RobotPosition, ItemID, Aux2KB, Aux3KB),
 	get_property_from_list(hands, RobotProperties, Hands),
 	remove_item_from_robot_hands(ItemID, Hands, NewHands),
-	change_property_of_object(hands=>_, hands=>NewHands, robbie, Aux2KB, NewKB),
+	change_property_of_object(hands=>_, hands=>NewHands, robbie, Aux3KB, NewKB),
 	atom_concat('The ', ItemID, Mes1),
 	atom_concat(Mes1, ' was placed successfully', Message),
 	writeln(Message).
