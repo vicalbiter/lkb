@@ -1883,7 +1883,85 @@ pick_number(3). %...
 pick_number(4). %...
 pick_number(5). %...
 
+%****************************************************************
+%---------------------------------------------------------------*
+%-----------------------Decision Module-------------------------*
+%---------------------------------------------------------------*
+%****************************************************************
 
+% Input: KB and Diagnosis. 
+% Output: List2Do (Decision making)
+decision_making(KB,D,List2Do) :- 
+	get_items_to_bring(KB,I), 
+	filter_D_by_item_request(I,D,NewD), 
+	flatten_list([NewD,I], GL), 
+	decision_making(GL, List2Do).
+
+% Input: I (List with the form [bring(item1), bring(item2), ...]), D (List with the form [place(item1), misplace(item2), move(shelf1), ...])
+% Output: NewD
+% Generate a New List D without the Items that has been requested by customer
+filter_D_by_item_request([bring(ItemBring)|T],D,NewD) :- 
+	filter_D_by_item_request(T,D,AuxD), 
+	detect(ItemBring, AuxD, Item), 
+	delete_element(Item,AuxD,NewD).
+filter_D_by_item_request([],D,D).
+% Detect if a ItemBring is placed or misplaced on shelf
+detect(ItemBring, D, place(ItemBring)) :- member_of(place(ItemBring), D).
+detect(ItemBring, D, misplace(ItemBring)) :- member_of(misplace(ItemBring), D).
+
+% Input: GL (Sum of 2 list. The List of items to bring and the list of diagnosis without the items to bring. )
+% Output: MakingList
+% Takes a combined list of the diagnosis and products requested and retun a MakingList with the task to Do by the Robot
+decision_making([D|T],MakingList):-decision_making(T, NL), got_item(D,Item), append(Item, NL, MakingList).
+decision_making([],[]).
+% Detect when and Item is requested or misplaced. 
+got_item(D,[rearrange(Item)]) :- D = misplace(Item).
+got_item(D,[bring(Item)]) :- D = bring(Item).
+got_item(D,[]) :- D = place(_).
+got_item(D,[]) :- D = move(_).
+
+% Input: KB
+% Output: NewKB
+% Ask for desired products, they must be introduced with the form [item1, item2, ...]
+start(KB,NewKB) :- display('Hello, my name is BB-8 and today i´m working on the supermarket. Please tell what do you want?'), 
+	nl,
+	read(Item),
+	save_items_requested(Item,KB,NewKB).
+
+% Input: List of items with the form Item = [item1, item2, ...] and the KB.
+% Output: NewKB
+% Change the property isRequested=>no to isRequested=>yes of all the Items requested
+save_items_requested([Item|T],KB,NewKB) :- 
+	save_items_requested(T,KB,AuxKB), 
+	get_class_objects(items,AuxKB,O), 
+	is_member_of_object_list(Item,O),
+	change_property_of_object(isRequested=>no, isRequested=>yes, Item, AuxKB, NewKB).
+save_items_requested([],KB,KB).
+
+% Input: List of items with the form Item = [item1, item2, ...] and the KB.
+% Output: NewKB
+% Change the property isRequested=>yes to isRequested=>no of all the Items delivered
+save_items_delivered([Item|T],KB,NewKB) :- 
+	save_items_delivered(T,KB,AuxKB), 
+	get_class_objects(items,AuxKB,O), 
+	is_member_of_object_list(Item,O),
+	change_property_of_object(isRequested=>yes, isRequested=>no, Item, AuxKB, NewKB).
+save_items_delivered([],KB,KB).
+
+% Input: KB
+% Output: I 
+% (Return a List I with all the Items with the property isRequested=>yes)
+get_items_to_bring(KB, Items) :-
+	get_class_extension(items, KB, AllItems),
+	get_requested_items(KB, AllItems, Items).
+
+get_requested_items(_, [], []).
+get_requested_items(KB, [Item|Items], [bring(Item)|RequestedItems]) :-
+	get_explicit_object_properties(Item, KB, ItemProperties),
+	get_property_from_list(isRequested, ItemProperties, yes),
+	get_requested_items(KB, Items, RequestedItems).
+get_requested_items(KB, [_|Items], RequestedItems) :-
+	get_requested_items(KB, Items, RequestedItems). 
 
 
 
